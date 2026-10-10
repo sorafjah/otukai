@@ -66,6 +66,8 @@ ruby rt{font-size:.5em;font-weight:400;letter-spacing:0}
 .mhouse .ck{margin-left:auto;color:var(--ok);font-size:14px}
 #memoHiddenBox{display:flex;flex-direction:column;gap:6px;align-items:stretch}
 #memoHiddenBox .note{font-size:13px;color:var(--sub)}
+.memoToggle{min-height:44px;padding:4px 12px;font-size:15px;background:#f1ece0}
+.memoCount{margin-top:6px;padding:4px 8px;border-radius:10px;background:#fff1c2;color:#7a5600;font-size:14px;font-weight:700;text-align:center}
 
 #topRight{position:fixed;right:10px;top:10px;display:flex;gap:8px;z-index:70}
 #topRight .btn{padding:6px 12px;font-size:16px}
@@ -154,7 +156,7 @@ ruby rt{font-size:.5em;font-weight:400;letter-spacing:0}
 </script>
 </head>
 <body>
-<!-- build: 2026-10-09 -->
+<!-- build: 2026-10-10 -->
 <canvas id="c"></canvas>
 
 <div id="hud" class="hidden">
@@ -230,9 +232,9 @@ ruby rt{font-size:.5em;font-weight:400;letter-spacing:0}
       <div class="seg" data-key="memo">
         <button data-v="level">レベルに あわせる</button>
         <button data-v="show">いつも <ruby>見<rt>み</rt></ruby>える</button>
-        <button data-v="hide">かくす</button>
+        <button data-v="hide">しばらくすると かくす</button>
       </div>
-      <div class="setnote">レベルに あわせる：レベル1は いつも <ruby>見<rt>み</rt></ruby>える、レベル2・3は さいしょだけ <ruby>見<rt>み</rt></ruby>せて かくす。</div>
+      <div class="setnote">レベルに あわせる：レベル1・2は いつも <ruby>見<rt>み</rt></ruby>える、レベル3は しばらくすると かくれる。<br>どの <ruby>設定<rt>せってい</rt></ruby>でも、メモの「かくす」「メモを <ruby>見<rt>み</rt></ruby>る」で じぶんで きりかえられる。</div>
     </div>
     <div class="setrow"><div class="lab">けんぴんの ヒント</div>
       <div class="seg" data-key="hint">
@@ -242,10 +244,11 @@ ruby rt{font-size:.5em;font-weight:400;letter-spacing:0}
     </div>
     <div class="setrow"><div class="lab"><ruby>見<rt>み</rt></ruby>かた</div>
       <div class="seg" data-key="view">
+        <button data-v="level">レベルに あわせる</button>
         <button data-v="walk">あるく</button>
         <button data-v="face">たなを <ruby>正面<rt>しょうめん</rt></ruby>から <ruby>見<rt>み</rt></ruby>る</button>
       </div>
-      <div class="setnote"><ruby>正面<rt>しょうめん</rt></ruby>から <ruby>見<rt>み</rt></ruby>る：したの ボタンで たなを えらぶ。あるかなくて よいので、さがす てまが へる。</div>
+      <div class="setnote">レベルに あわせる：レベル1は <ruby>正面<rt>しょうめん</rt></ruby>から <ruby>見<rt>み</rt></ruby>る、レベル2・3は あるく。<br><ruby>正面<rt>しょうめん</rt></ruby>から <ruby>見<rt>み</rt></ruby>る：したの ボタンで たなを えらぶ。あるかなくて よいので、さがす てまが へる。</div>
     </div>
     <div class="center"><button id="setClose" class="btn primary big">とじる</button></div>
   </div>
@@ -299,11 +302,11 @@ import * as THREE from 'three';
    ===================================================================== */
 /*CFG_START*/
 const CFG = {
-  version: 'v2026-10-09',
+  version: 'v2026-10-10',
   // あるく
   walkSpeed: 3.0,        // m/秒
-  turnSpeed: 2.0,        // ジョイスティック左右での回転（rad/秒）
-  dragYaw: 0.0055,       // 画面をなぞったときの回転（rad/px）
+  turnSpeed: 1.0,        // ジョイスティック左右での回転（rad/秒）
+  dragYaw: 0.003,        // 画面をなぞったときの回転（rad/px）
   dragPitch: 0.004,
   pitchDefault: -0.14,
   pitchMin: -0.8, pitchMax: 0.35,
@@ -316,18 +319,19 @@ const CFG = {
   tapMaxMs: 650,
   // 棚
   slotsPerUnit: 4,
-  unitsPerRow: 3,
+  unitsPerRow: 8,        // 1列にならべる棚の数（うしろに回りこまなくてよいように1列）
   unitWidth: 1.8,
   rowGap: 3.8,
   itemSize: 0.22,        // 商品の基本の大きさ（m・最大辺）
   itemScale: 1.3,        // 棚にならべるときの拡大率
   // 正面モード
   stationTween: 0.45,    // 棚の切りかえにかける時間（秒）
-  // むずかしさ
+  memoHideSec: 15,       // 「しばらくすると かくす」までの秒数
+  // むずかしさ（shelves: 棚の台数。null なら全部の商品をならべる）
   levels: {
-    1: { types: [2, 3], qty: [1, 2], variants: [],               memo: 'show' },
-    2: { types: [3, 4], qty: [1, 3], variants: ['size'],         memo: 'hide' },
-    3: { types: [4, 5], qty: [1, 5], variants: ['size', 'color'], memo: 'hide' },
+    1: { types: [2, 3], qty: [1, 2], variants: [],               memo: 'show', view: 'face', shelves: 2 },
+    2: { types: [3, 4], qty: [1, 3], variants: ['size'],         memo: 'show', view: 'walk', shelves: null },
+    3: { types: [4, 5], qty: [1, 5], variants: ['size', 'color'], memo: 'hide', view: 'walk', shelves: null },
   },
   // 配達：届け先の数と、1けんあたりの種類
   delivery: {
@@ -483,8 +487,13 @@ function generateOrder(mode, level, rng) {
   throw new Error('order generation failed');
 }
 // 棚の配置。毎回ランダムにならべかえる（ばんごうを読む練習のため）
-function assignLayout(mode, level, rng) {
-  const ids = shuffle(rng, stockFor(mode, level).map(s => s.id));
+function assignLayout(mode, level, rng, order) {
+  let ids = shuffle(rng, stockFor(mode, level).map(s => s.id));
+  const cap = CFG.levels[level].shelves ? CFG.levels[level].shelves * CFG.slotsPerUnit : 0;
+  if (cap && order) { // 注文の品は必ず入れて、のこりをランダムにうめる
+    const need = [...new Set(order.bags.flatMap(b => b.lines.map(l => l.id)))];
+    ids = shuffle(rng, need.concat(ids.filter(id => !need.includes(id))).slice(0, Math.max(cap, need.length)));
+  }
   const per = CFG.slotsPerUnit;
   const letters = 'ABCDEFGHIJ';
   const units = [];
@@ -927,14 +936,19 @@ function placeUnits(units, styleKey, ox, oz) {
 }
 function person(x, z, ry, shirt) {
   const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry; add(g);
+  const hair = 0x3b2a20;
   g.add(P(U.cyl, 0x34495e, .17, .8, .17, 0, .4, 0), P(U.cyl, shirt, .24, .62, .2, 0, 1.1, 0), P(U.sph, 0xf5cfa8, .17, .19, .17, 0, 1.58, 0),
-    P(U.hemi, 0x3b2a20, .18, .14, .18, 0, 1.62, 0));
+    P(U.hemi, hair, .185, .22, .185, 0, 1.6, -.005),            // あたまの上
+    P(U.sph, hair, .18, .17, .16, 0, 1.6, -.035),               // うしろ髪
+    P(U.box, hair, .3, .05, .06, 0, 1.69, .13, -.35, 0, 0),     // まえがみ
+    P(U.sph, 0x222222, .018, .024, .01, -.06, 1.58, .16), P(U.sph, 0x222222, .018, .024, .01, .06, 1.58, .16), // め
+    P(U.box, 0xc0504d, .05, .012, .01, 0, 1.5, .165));          // くち
   return g;
 }
 
 function buildStore(layout) {
   const rows = Math.ceil(layout.units.length / CFG.unitsPerRow);
-  const backZ = -(rows - 1) * CFG.rowGap - 2.6, frontZ = 8, hw = 8;
+  const backZ = -(rows - 1) * CFG.rowGap - 4.0, frontZ = 8, hw = 8;
   scene.background.set(0xf3efe6); scene.fog = null;
   floor(hw * 2, frontZ - backZ, 0, (frontZ + backZ) / 2, 'store', 2);
   const wallC = 0xfdf6e3, wh = 3.2;
@@ -944,7 +958,7 @@ function buildStore(layout) {
   solid(hw * 2, wh, .2, wallC, 0, wh / 2, frontZ);
   add(P(U.box, 0xa9d8f0, 3.2, 2.4, .05, -4.5, 1.2, frontZ - .12)); // 入口のガラス
   add(P(U.box, 0x7fb069, hw * 2, .35, .05, 0, 2.9, backZ + .12));
-  const welcome = textSign(3.6, .6, 'いらっしゃいませ', { bg: '#e04848' }); welcome.position.set(-5.2, 2.55, backZ + .16); add(welcome);
+  const welcome = textSign(3.6, .6, 'いらっしゃいませ', { bg: '#e04848' }); welcome.position.set(-hw + .14, 2.3, 2.5); welcome.rotation.y = HZ; add(welcome); // 左のかべ（棚の看板と重ならないように）
   placeUnits(layout.units, 'store', 0, 0);
   // レジ
   const rx = 5.4, rz = 5.0;
@@ -963,7 +977,7 @@ function buildStore(layout) {
 
 function buildWarehouse(layout) {
   const rows = Math.ceil(layout.units.length / CFG.unitsPerRow);
-  const backZ = -(rows - 1) * CFG.rowGap - 2.6, frontZ = 8, hw = 8;
+  const backZ = -(rows - 1) * CFG.rowGap - 4.0, frontZ = 8, hw = 8;
   scene.background.set(0xdfe3e8); scene.fog = null;
   floor(hw * 2, frontZ - backZ, 0, (frontZ + backZ) / 2, 'rack', 2);
   const wallC = 0xb9c2cc, wh = 4;
@@ -1030,7 +1044,8 @@ function buildTown(layout, order) {
   // 配送センター（屋根つき）
   const rows = Math.ceil(layout.units.length / CFG.unitsPerRow);
   const front = 1.0, back = front - (rows - 1) * CFG.rowGap;
-  const lx0 = -4.8, lx1 = 4.8, lz0 = back - 2.2, lz1 = front + 3.0;
+  const half = Math.max(4.8, Math.min(layout.units.length, CFG.unitsPerRow) * CFG.unitWidth / 2 + 1.0);
+  const lx0 = -half, lx1 = half, lz0 = back - 2.2, lz1 = front + 3.0;
   add(P(U.box, 0xcfd4d9, lx1 - lx0, .03, lz1 - lz0, 0, .015, (lz0 + lz1) / 2));
   for (const px of [lx0, lx1]) for (const pz of [lz0, lz1]) solid(.25, 3.4, .25, 0x8a95a1, px, 1.7, pz);
   add(P(U.box, 0xe3e9f1, lx1 - lx0 + .6, .2, lz1 - lz0 + .6, 0, 3.5, (lz0 + lz1) / 2));
@@ -1088,11 +1103,11 @@ function buildWorld(mode, layout, order) {
 const S = {
   phase: 'help',            // help → menu → play → clear
   mode: 'store', level: 1,
-  settings: { memo: 'level', hint: 'vague', view: 'walk' },
+  settings: { memo: 'level', hint: 'vague', view: 'level' },
   paused: true, frames: 0, elapsed: 0,
   seed: 0, order: null, layout: null, codeOf: {},
   bags: [], activeBag: 0,
-  memoViews: 0, inspections: 0, memoHidden: false,
+  memoViews: 0, inspections: 0, memoHidden: false, memoHideAt: null,
   player: { x: 0, z: 0, yaw: 0, pitch: CFG.pitchDefault },
   cam: { x: 0, y: CFG.eyeHeight, z: 0, yaw: 0, pitch: 0 },
   station: 0, tween: null,
@@ -1105,19 +1120,20 @@ function hideOv(id) { $(id).classList.add('hidden'); OPEN.delete(id); refreshPau
 function refreshPause() { S.paused = OPEN.size > 0 || S.phase !== 'play'; }
 
 function memoMode() { return S.settings.memo === 'level' ? CFG.levels[S.level].memo : S.settings.memo; }
+function viewMode() { return S.settings.view === 'level' ? CFG.levels[S.level].view : S.settings.view; }
 
 function startRound(mode = S.mode, level = S.level, seed) {
   S.mode = mode; S.level = level;
   S.seed = (seed ?? ((Date.now() ^ (Math.random() * 1e9)) >>> 0)) >>> 0;
   const rng = mulberry32(S.seed);
   S.order = generateOrder(mode, level, rng);
-  S.layout = assignLayout(mode, level, rng);
+  S.layout = assignLayout(mode, level, rng, S.order);
   S.codeOf = {};
   for (const u of S.layout.units) for (const s of u.slots) if (s.itemId) S.codeOf[s.itemId] = s.code;
   buildWorld(mode, S.layout, S.order);
   S.bags = S.order.bags.map(() => ({ contents: {}, attempts: 0, done: false }));
   S.activeBag = 0; S.memoViews = 0; S.inspections = 0; S.elapsed = 0;
-  S.memoHidden = false;
+  S.memoHidden = false; S.memoHideAt = null;
   const st = world.start;
   S.player = { x: st.x, z: st.z, yaw: st.yaw, pitch: CFG.pitchDefault };
   S.phase = 'play';
@@ -1128,7 +1144,7 @@ function startRound(mode = S.mode, level = S.level, seed) {
 }
 
 function applyView(instant) {
-  const face = S.settings.view === 'face';
+  const face = viewMode() === 'face';
   $('#joy').classList.toggle('hidden', face);
   $('#stationBar').classList.toggle('hidden', !face);
   $('#actionBtn').classList.toggle('raise', face);
@@ -1156,9 +1172,29 @@ function renderMemoPanel() {
   if (S.memoHidden) {
     el.innerHTML = head + `<div id="memoHiddenBox"><button class="btn primary" data-act="memo" style="font-size:20px;min-height:56px">📝 メモを ${R('見', 'み')}る</button><div class="note">${R('見', 'み')}た かいすう：${S.memoViews}かい</div></div>`;
   } else {
-    el.innerHTML = head + `<div style="font-weight:700;margin:2px 0 4px">📝 ${memoTitle()}</div>` + memoHTML();
+    el.innerHTML = head.replace('</div>', `<button class="btn memoToggle" data-act="hideMemo">かくす</button></div>`) +
+      `<div style="font-weight:700;margin:2px 0 4px">📝 ${memoTitle()}</div>` + memoHTML() +
+      (S.memoHideAt != null ? `<div class="memoCount" id="memoCount"></div>` : '');
+    lastCount = -1; updateMemoCount();
   }
 }
+let lastCount = -1;
+function updateMemoCount() {
+  const el = document.getElementById('memoCount');
+  if (!el || S.memoHideAt == null) return;
+  const sec = Math.max(0, Math.ceil(S.memoHideAt - S.elapsed));
+  if (sec === lastCount) return;
+  lastCount = sec;
+  el.textContent = `あと ${sec}びょうで かくれるよ`;
+}
+// メモを だす（「しばらくすると かくす」のときは、また時間がたつと かくれる）
+function showMemo(countView = true) {
+  if (countView && S.memoHidden) S.memoViews++;
+  S.memoHidden = false;
+  S.memoHideAt = memoMode() === 'hide' ? S.elapsed + CFG.memoHideSec : null;
+  renderMemoPanel();
+}
+function hideMemo() { S.memoHidden = true; S.memoHideAt = null; renderMemoPanel(); }
 function openMemo(atStart) {
   $('#memoTitle').innerHTML = memoTitle();
   $('#memoBody').innerHTML = memoHTML();
@@ -1170,9 +1206,9 @@ function openMemo(atStart) {
     if (S.mode === 'store') t = 'スーパーで かって、<b>レジ</b>で わたそう。';
     else if (S.mode === 'pick') t = '<b>ばんごう</b>の たなから あつめて、<b>しゅっかぐち</b>で わたそう。';
     else t = 'みぎうえの ふくろを えらんでから あつめよう。おうちごとに ふくろを わけて とどけよう。';
-    if (hide) t += `<br>このメモは このあと かくれるよ。「メモを ${R('見', 'み')}る」で また ${R('見', 'み')}られる。`;
+    if (hide) t += `<br>メモは ${CFG.memoHideSec}びょう たつと かくれるよ。「メモを ${R('見', 'み')}る」で また ${R('見', 'み')}られる。`;
     note.innerHTML = t;
-    $('#memoClose').textContent = hide ? 'おぼえた！' : 'しゅっぱつ！';
+    $('#memoClose').textContent = 'しゅっぱつ！';
   } else {
     note.classList.add('hidden');
     $('#memoClose').textContent = 'とじる';
@@ -1183,7 +1219,7 @@ function openMemo(atStart) {
 function closeMemo() {
   const atStart = $('#memoModal').dataset.start === '1';
   hideOv('#memoModal');
-  if (atStart) { S.memoHidden = memoMode() === 'hide'; renderMemoPanel(); }
+  if (atStart) showMemo(false);
 }
 
 // ---------- かご ----------
@@ -1320,7 +1356,7 @@ function confetti() {
 // ---------- 「わたす」ボタン ----------
 function currentGoal() {
   if (S.phase !== 'play') return null;
-  if (S.settings.view === 'face') {
+  if (viewMode() === 'face') {
     const st = world.stations[S.station];
     if (st && st.kind === 'goal') { const g = world.goals[st.goal]; if (!S.bags[g.bag].done) return g; }
     return null;
@@ -1396,6 +1432,7 @@ function movePlayer(dt) {
   const k = S.keys;
   let f = -S.joy.y, t = -S.joy.x;
   if (Math.abs(f) < 0.15) f = 0; if (Math.abs(t) < 0.15) t = 0;
+  t = t * Math.abs(t); // 少したおしたときは ゆっくり まわる
   if (k.ArrowUp || k.KeyW) f = 1; if (k.ArrowDown || k.KeyS) f = -1;
   if (k.ArrowLeft || k.KeyA) t = 1; if (k.ArrowRight || k.KeyD) t = -1;
   const p = S.player;
@@ -1423,7 +1460,10 @@ function update(dt) {
   S.elapsed += dt;
   ringT += 0.05 * dtScale;
   if (world) for (const r of world.rings) { r.ring.material.opacity = 0.5 + Math.sin(ringT) * 0.3; r.ring.scale.setScalar(1 + Math.sin(ringT) * 0.04); }
-  if (S.settings.view === 'walk') movePlayer(dt);
+  if (S.memoHideAt != null) {
+    if (S.elapsed >= S.memoHideAt) hideMemo(); else updateMemoCount();
+  }
+  if (viewMode() === 'walk') movePlayer(dt);
   else if (S.tween) {
     const tw = S.tween; tw.t = Math.min(1, tw.t + dt / CFG.stationTween);
     const e = tw.t * tw.t * (3 - 2 * tw.t);
@@ -1452,7 +1492,7 @@ function handleTap(x, y) {
   tryPick(slot, [x, y]);
 }
 function tryPick(slot, xy, force = false) {
-  if (S.settings.view === 'walk' && !force) {
+  if (viewMode() === 'walk' && !force) {
     const d = Math.hypot(S.player.x - slot.wx, S.player.z - slot.wz);
     if (d > CFG.reach) { toast('もっと ちかづいてね'); SND.far(); return false; }
   }
@@ -1476,7 +1516,7 @@ canvas.addEventListener('pointermove', e => {
   if (!cp || e.pointerId !== cp.id) return;
   const dx = e.clientX - cp.lx, dy = e.clientY - cp.ly; cp.lx = e.clientX; cp.ly = e.clientY;
   if (!cp.drag && Math.hypot(e.clientX - cp.x, e.clientY - cp.y) > CFG.tapMovePx) cp.drag = true;
-  if (cp.drag && S.phase === 'play' && !S.paused && S.settings.view === 'walk') {
+  if (cp.drag && S.phase === 'play' && !S.paused && viewMode() === 'walk') {
     S.player.yaw += dx * CFG.dragYaw;
     S.player.pitch = clamp(S.player.pitch + dy * CFG.dragPitch, CFG.pitchMin, CFG.pitchMax);
     syncCamFromPlayer();
@@ -1510,7 +1550,10 @@ onTap($('#bagPanel'), t => {
   if (t.dataset.act === 'minus') removeItem(t.dataset.id);
   else if (t.dataset.bag !== undefined) setActiveBag(+t.dataset.bag);
 });
-onTap($('#memoPanel'), t => { if (t.dataset.act === 'memo') { S.memoViews++; SND.tap(); openMemo(false); renderMemoPanel(); } });
+onTap($('#memoPanel'), t => {
+  if (t.dataset.act === 'memo') { SND.tap(); showMemo(); }
+  else if (t.dataset.act === 'hideMemo') { SND.tap(); hideMemo(); }
+});
 onTap($('#memoClose'), () => closeMemo());
 onTap($('#actionBtn'), () => { const g = currentGoal(); if (g) inspect(g.bag); });
 onTap($('#stationBar'), t => { if (t.dataset.st !== undefined) { SND.tap(); goToStation(+t.dataset.st); } });
@@ -1519,7 +1562,8 @@ onTap($('#resultModal'), t => { if (t.dataset.act === 'resClose') closeResult();
 // ---------- メニュー・設定・説明 ----------
 function levelDesc(lv) {
   const L = CFG.levels[lv];
-  const mm = L.memo === 'show' ? `メモ いつも ${R('見', 'み')}える` : 'メモ かくれる';
+  const mm = (L.memo === 'show' ? `メモ いつも ${R('見', 'み')}える` : 'メモ しばらくすると かくれる') +
+    (L.shelves ? `<br>たな ${L.shelves}だい・${R('正面', 'しょうめん')}から ${R('見', 'み')}る` : '');
   const nf = [];
   if (L.variants.includes('size')) nf.push('おおきさ');
   if (L.variants.includes('color')) nf.push('いろ');
@@ -1572,7 +1616,7 @@ onTap($('#helpClose'), () => {
 window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
-  if (S.phase === 'play' && S.settings.view === 'face') goToStation(S.station, true);
+  if (S.phase === 'play' && viewMode() === 'face') goToStation(S.station, true);
 });
 
 /* =====================================================================
@@ -1598,7 +1642,7 @@ window.__game = {
     },
     setSettings(o) { Object.assign(S.settings, o); },
     start(mode, level, seed) { S.started = true; for (const id of [...OPEN]) hideOv(id); startRound(mode, level, seed); },
-    closeMemo, closeResult, openMemo: () => { S.memoViews++; openMemo(false); renderMemoPanel(); },
+    closeMemo, closeResult, showMemo, hideMemo,
     codeOf: id => S.codeOf[id],
     slot: code => world.slots.find(s => s.code === code || s.itemId === code),
     // force=true で距離の判定をとばす（false にすると、あるくモードの「ちかづいてね」も確かめられる）
