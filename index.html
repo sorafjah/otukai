@@ -709,7 +709,7 @@ function renderHowto(resume){
     const notes=[];
   if(S.scene==='shelve'&&CFG.shelveDest[S.level]==='grid') notes.push('「C-3」は、<b>C</b>の たなの、したから <b>3</b>だんめ。');
   if(mm==='peek') notes.push('メモは さいしょに みたら かくれます。わすれたら「メモを みる」ボタン。');
-  if(mm==='start') notes.push(`メモは ${sc.startName}で しか みられません。よく おぼえて いこう。`);
+  if(mm==='start') notes.push(`メモは はじめに みたら かくれます。わすれたら ${sc.startName}の ${STAFF_NAME[S.scene]}に もどって「そうだん する」。`);
   notes.push('まちがえて いたら、なおして もういちど しらべよう。');
   if(S.scene==='otsukai'||S.scene==='picking') notes.push('まちがえて とったら、したの かごの しなものを タップ。ひとつ へらせます。');
   if(S.scene==='shelve') notes.push('まちがえて おいたら、たなの しなものを タップ。てもとに もどります。');
@@ -784,11 +784,10 @@ function renderPanel(){
     const sc=SCENES[S.scene], mm=memoMode();
     if(S.consult){ h=consultHTML(); $('panelCard').innerHTML=h; return; }
     h=`<h2>${st.label}</h2>
-      ${mm==='start'?`<div class="paper big">${memoHTML(false)}</div>`:''}
+      ${mm==='start'?`<p>メモを わすれたら「そうだん する」で ${STAFF_NAME[S.scene]}に きこう。</p>`:''}
       <p>ぜんぶ できたら、「${sc.finish}」を おそう。</p>
       ${msgHTML()}
-      <div class="row end"><button class="btn" data-act="closePanel">とじる</button>${troubleOn()?'<button class="btn" data-act="consult">そうだん する</button>':''}<button class="btn main" data-act="finish">${sc.finish}</button></div>`;
-    if(mm==='start'){ S.memoViews++; }
+      <div class="row end"><button class="btn" data-act="closePanel">とじる</button>${(troubleOn()||mm==='start')?'<button class="btn" data-act="consult">そうだん する</button>':''}<button class="btn main" data-act="finish">${sc.finish}</button></div>`;
   }
   $('panelCard').innerHTML=h;
 }
@@ -851,6 +850,7 @@ function clearGame(){
   S.mode='clear'; show('panel',false); S.panel=null; sfx.ok();
   const mm=memoMode(), lines=[];
   if(mm==='peek') lines.push(`メモを みた かいすう：${S.memoViews}かい`);
+  if(mm==='start' && S.memoViews>0) lines.push(`メモを きいた かいすう：${S.memoViews}かい`);
   lines.push(`しらべた かいすう：${S.checks+1}かい`);
   if(S.trouble?.solved) lines.push('こまった ことを そうだん できた！');
   $('clearCard').innerHTML=`<h2 style="font-size:40px">できた！</h2><p>${SCENES[S.scene].title}　レベル${S.level}を クリア</p>${lines.map(l=>`<p>${l}</p>`).join('')}
@@ -866,6 +866,8 @@ const PREDS = {
   delivery:['が たりません','が おおいです','が ありません'],
   shelve:['が いっぱいで おけません','が みつかりません','が こわれています'],
 };
+const WASURE='を わすれました';
+const preds = () => PREDS[S.scene].concat(memoMode()==='start' ? [WASURE] : []);
 function setupTrouble(){
   const e=S.order[Math.floor(Math.random()*S.order.length)];
   if(S.scene==='otsukai'||S.scene==='picking'){
@@ -889,6 +891,10 @@ function setupTrouble(){
   }
 }
 function consultSubjects(){
+  const base=consultSubjects0();
+  return memoMode()==='start' ? base.concat([{key:'memo', html:'📝 メモ', text:'メモ'}]) : base;
+}
+function consultSubjects0(){
   if(S.scene==='shelve') return S.order.map(e=>({key:cellKey(e.unit,e.row), html:destHTML(e.unit,e.row), text:destText(e.unit,e.row)}));
   const ids=[...new Set(S.order.map(e=>e.item))];
   return ids.map(id=>({key:id, html:`${img(id)}${ITEMS[id].name}`, text:ITEMS[id].name}));
@@ -903,12 +909,15 @@ function consultHTML(){
     <div class="sect">① なにの ことか えらぶ</div>
     <div class="row">${subs.map(x=>`<button class="item ${c.subj===x.key?'sel':''}" style="min-height:auto;display:flex;align-items:center;gap:6px;font-size:20px;font-weight:700" data-act="csubj" data-v="${x.key}">${x.html}</button>`).join('')}</div>
     <div class="sect">② こまって いる ことを えらぶ</div>
-    <div class="preds">${PREDS[S.scene].map((t,i)=>`<button class="btn ${c.pred===i?'sel':''}" data-act="cpred" data-v="${i}">〇〇${t}</button>`).join('')}</div>
-    <div class="say">${sub&&c.pred!==null?`「${sub.text}${PREDS[S.scene][c.pred]}」`:'<span class="ph">①と ②を えらぶと、ここに いう ことが でるよ</span>'}</div>
+    <div class="preds">${preds().map((t,i)=>`<button class="btn ${c.pred===i?'sel':''}" data-act="cpred" data-v="${i}">〇〇${t}</button>`).join('')}</div>
+    <div class="say">${sub&&c.pred!==null?`「${sub.text}${preds()[c.pred]}」`:'<span class="ph">①と ②を えらぶと、ここに いう ことが でるよ</span>'}</div>
     <div class="row end"><button class="btn" data-act="consultEnd">やめる</button><button class="btn main" data-act="csay" ${sub&&c.pred!==null?'':'disabled style="opacity:.4"'}>はなす</button></div>`;
 }
 function consultSay(){
-  const c=S.consult, T=S.trouble, pred=PREDS[S.scene][c.pred];
+  const c=S.consult, T=S.trouble, pred=preds()[c.pred];
+  if(pred===WASURE || c.subj==='memo'){
+    if(pred===WASURE && c.subj==='memo'){ S.memoViews++; sfx.ok(); c.reply=`いいですよ。もういちど おしえますね。<div class="paper big" style="margin-top:10px">${memoHTML(false)}</div>`; c.done=true; renderPanel(); return true; }
+    c.reply='うーん、そうでは ない みたい。もういちど おしえて ください。'; sfx.ng(); renderPanel(); return false; }
   if((!T || T.solved) && S.extra.includes(c.subj) && pred==='が おおいです'){ c.reply='あまった ぶんは、もって かえって きてね。'; sfx.open(); renderPanel(); return false; }
   if(!T || T.solved){ c.reply='だいじょうぶ そうですよ。メモを よく みてね。'; sfx.open(); renderPanel(); return false; }
   let ok=false;
@@ -1071,7 +1080,7 @@ function updateCamera(dt,snap=false){
   const k=snap?1:Math.min(1,C.follow*dt);
   camPos.lerp(_tg,k); camLook.lerp(_lk,k); camera.position.copy(camPos); camera.lookAt(camLook);
   // たなの まえでは 自分を うすく する
-  const op=v?0.25:1; for(const m of playerMats) m.opacity+= (op-m.opacity)*Math.min(1,8*dt+(snap?1:0));
+  const op=(v&&v.type!=='start')?0.25:1; for(const m of playerMats) m.opacity+= (op-m.opacity)*Math.min(1,8*dt+(snap?1:0));
 }
 const _wp=new THREE.Vector3();
 function updateNPC(dt){
@@ -1114,7 +1123,7 @@ window.__game = { S, CFG, camera, player, get stations(){return stations;},
       st && world.traverse(o=>{ if(!obj && o.visible && o.userData.stationId===stId && o.userData[key]===val) obj=o; });
       if(!obj) return null; obj.updateWorldMatrix(true,false); const v=new THREE.Vector3(); obj.getWorldPosition(v); v.project(camera);
       return { x:(v.x+1)/2*innerWidth, y:(1-v.y)/2*innerHeight }; },
-    consult:(subj,pred)=>{ S.consult={subj,pred:PREDS[S.scene].indexOf(pred),reply:null}; const r=consultSay(); S.consult=null; return r; },
+    consult:(subj,pred)=>{ S.consult={subj,pred:preds().indexOf(pred),reply:null}; const r=consultSay(); S.consult=null; return r; },
     setOpt:(k,v)=>{ S.opt[k]=v; },
     trouble:()=>S.trouble&&{type:S.trouble.type,item:S.trouble.item,key:S.trouble.unit&&cellKey(S.trouble.unit,S.trouble.row),solved:S.trouble.solved},
     joystick:(x,y)=>{ joy.x=x; joy.y=y; },
