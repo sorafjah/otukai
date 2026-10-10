@@ -288,15 +288,21 @@ function iconURL(id){ return urlCache[id] ||= iconCanvas(id).toDataURL(); }
 function iconTex(id){ if(!texCache[id]){ const t=new THREE.CanvasTexture(iconCanvas(id)); t.colorSpace=THREE.SRGBColorSpace; texCache[id]=t; } return texCache[id]; }
 const img = (id, cls='') => `<img class="${cls}" src="${iconURL(id)}" alt="${ITEMS[id].name}">`;
 
+/* ================= 設定（先生が えらぶ。この iPad に 保存） ================= */
+const OPT_DEFAULT = { memo:'level', trouble:'level', extra:'on', hint:'first', sound:'on' };
+function loadOpt(){ try{ return {...OPT_DEFAULT, ...JSON.parse(localStorage.getItem('otukai-opt')||'{}')}; }catch(e){ return {...OPT_DEFAULT}; } }
+function saveOpt(){ try{ localStorage.setItem('otukai-opt', JSON.stringify(S.opt)); }catch(e){} }
+
 /* ================= 状態 ================= */
 const S = {
-  mode:'menu', scene:null, level:1, control:'walk', memoAlways:false,
+  mode:'menu', scene:null, level:1, control:'walk', opt:loadOpt(), extra:[],
   paused:false, order:[], basket:{}, given:{}, placed:{}, sel:null,
   checks:0, memoViews:0, elapsed:0, frames:0, panel:null, path:null, pathStation:null,
   W:20, D:20, yaw:0, lastMsg:null,
 };
 const lv = () => CFG.levels[S.level];
-const memoMode = () => S.memoAlways ? 'always' : lv().memo;
+const memoMode = () => S.opt.memo==='level' ? lv().memo : S.opt.memo;
+const troubleOn = () => S.opt.trouble==='level' ? lv().trouble : S.opt.trouble==='on';
 const rnd = (a,b) => a + Math.floor(Math.random()*(b-a+1));
 const shuffle = a => { a=[...a]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; };
 const $ = id => document.getElementById(id);
@@ -405,7 +411,7 @@ function makeStart(x,z,name,look,L=2.4){
   const top=box(1.1,0.08,L+0.1,'#5c8f80'); top.position.set(-0.35,1.02,0); g.add(top);
   if(S.scene==='otsukai'){ const reg=box(0.42,0.32,0.5,'#4a5562'); reg.position.set(-0.35,1.22,0.35); g.add(reg);
     const scr=box(0.04,0.22,0.4,'#9fd3ff'); scr.position.set(-0.2,1.5,0.35); scr.rotation.z=0.3; g.add(scr); }
-  const st={ id:'start', type:'start', label:name, x, z, aabb:aabb(x+0.15,z,2.0,L), stand:{x:x-0.35, z:z+L/2+0.9} };
+  const st={ id:'start', type:'start', label:name, x, z, aabb:aabb(x+0.15,z,2.0,L), stand:{x:x-1.45, z:z+0.35} };
   const per=makePerson(look); per.position.set(0.65,0,0.2); per.rotation.y=-Math.PI/2; g.add(per); npcs.push({g:per, st, home:-Math.PI/2, face:false});
   const sg=sign(name,{bg:'#12866b',fg:'#fff',w:Math.max(256,name.length*70+60),size:64,scale:0.5}); sg.position.set(0.15,2.45,-0.4); g.add(sg);
   addStation(st,g); return st;
@@ -438,12 +444,14 @@ function makeHouse(id,hi,x,z,face){
   const door=box(1.0,1.7,0.12,H.door); door.userData.door=true; const fx=face.x, fz=face.z;
   door.position.set(fx*(s/2+0.04),0.85,fz*(s/2+0.04)); door.rotation.y=Math.atan2(fx,fz); g.add(door);
   const sg=sign(H.name,{w:220,size:70,scale:0.9}); sg.position.set(fx*(s/2+0.5),2.75,fz*(s/2+0.5)); g.add(sg);
-  const gift=new THREE.Group(); gift.position.set(fx*(s/2+0.45)+fz*1.1,0.35,fz*(s/2+0.45)-fx*1.1); g.add(gift);
-  const st={ id, type:'house', hi, label:H.name+'さん', x, z, gift, face:{x:fx,z:fz}, aabb:aabb(x,z,s,s,4.2), stand:{x:x+fx*(s/2+0.95), z:z+fz*(s/2+0.95)} };
+  const gift=new THREE.Group(); gift.position.set(fx*(s/2+0.45)+fz*1.25,0.35,fz*(s/2+0.45)-fx*1.25); g.add(gift);
+  // いえの 人は ドアの まえに 立って うけとる（ドアの まえ ＝ 人の まえ）
+  const front=s/2+0.6;
+  const st={ id, type:'house', hi, label:H.name+'さん', x, z, gift, face:{x:fx,z:fz}, aabb:aabb(x+fx*0.45,z+fz*0.45,s+Math.abs(fx)*0.9,s+Math.abs(fz)*0.9,4.2), stand:{x:x+fx*(front+0.95), z:z+fz*(front+0.95)} };
   const per=makePerson({shirt:H.door, hair:['#3a2a1e','#6b4a2a','#222','#9a9a9a'][hi%4], pants:['#3b4a5c','#6b5a44','#2b2b33'][hi%3]});
-  const px=fx*(s/2+0.6)-fz*1.15, pz=fz*(s/2+0.6)+fx*1.15, home=Math.atan2(fx,fz);
-  per.position.set(px,0,pz); per.rotation.y=home; g.add(per); npcs.push({g:per, st, home, face:true});
-  addStation(st,g); obstacles.push(aabb(x+px,z+pz,0.7,0.7)); return st;
+  const home=Math.atan2(fx,fz);
+  per.position.set(fx*front,0,fz*front); per.rotation.y=home; g.add(per); npcs.push({g:per, st, home, face:true});
+  addStation(st,g); return st;
 }
 function tree(x,z){ const t=box(0.3,1.2,0.3,'#7a5226'); t.position.set(x,0.6,z); world.add(t);
   const l=new THREE.Mesh(new THREE.SphereGeometry(0.9,12,10), lam('#4e9a48')); l.position.set(x,1.8,z); world.add(l); obstacles.push(aabb(x,z,0.6,0.6,2.8)); }
@@ -642,7 +650,7 @@ document.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ')&&docu
 /* ================= 音 ================= */
 let AC=null;
 function audioOn(){ try{ AC ||= new (window.AudioContext||window.webkitAudioContext)(); AC.resume(); }catch(e){} }
-function tone(f,d,type='sine',v=0.18,when=0){ if(!AC) return; const t=AC.currentTime+when, o=AC.createOscillator(), g=AC.createGain();
+function tone(f,d,type='sine',v=0.18,when=0){ if(!AC||S.opt.sound==='off') return; const t=AC.currentTime+when, o=AC.createOscillator(), g=AC.createGain();
   o.type=type; o.frequency.value=f; g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(0.001,t+d); o.connect(g).connect(AC.destination); o.start(t); o.stop(t+d); }
 const sfx={ pick:()=>tone(720,0.12,'triangle'), put:()=>tone(520,0.12,'triangle'), ng:()=>{tone(220,0.18,'square',0.1);tone(180,0.22,'square',0.1,0.12);},
   ok:()=>[523,659,784,1047].forEach((f,i)=>tone(f,0.25,'triangle',0.18,i*0.12)), open:()=>tone(880,0.06,'sine',0.1) };
@@ -705,8 +713,9 @@ function renderHowto(resume){
   notes.push('まちがえて いたら、なおして もういちど しらべよう。');
   if(S.scene==='otsukai'||S.scene==='picking') notes.push('まちがえて とったら、したの かごの しなものを タップ。ひとつ へらせます。');
   if(S.scene==='shelve') notes.push('まちがえて おいたら、たなの しなものを タップ。てもとに もどります。');
+  if((S.scene==='delivery'||S.scene==='shelve') && S.opt.extra==='on') notes.push('もって いる ものは あまる ことも あるよ。メモの かずだけ わたそう・おこう。');
   if(S.scene==='delivery') notes.push('まちがえて わたしたら、いえの まえの にもつを タップ。かえして もらえます。');
-  if(lv().trouble) notes.push(`こまった ことが おきるかも。そのときは ${sc.startName}の ${STAFF_NAME[S.scene]}に そうだん しよう。`);
+  if(troubleOn()) notes.push(`こまった ことが おきるかも。そのときは ${sc.startName}の ${STAFF_NAME[S.scene]}に そうだん しよう。`);
   notes.push('がめんの みぎがわを ゆびで よこに うごかすと、まわりが みられます。');
   $('howtoCard').innerHTML=`<h2>${sc.title}　レベル${S.level}　あそびかた</h2>
     <div class="steps">${steps.map(([k,t,d])=>`<div class="step">${k==='tap'?controlSVG(c):stepSVG(k)}<b>${t}</b><span>${d}</span></div>`).join('')}</div>
@@ -714,10 +723,18 @@ function renderHowto(resume){
     <div class="row end">${resume?'<button class="btn main" data-act="howtoClose">つづける</button>':'<button class="btn" data-act="toMenu">もどる</button><button class="btn main" data-act="begin">はじめる</button>'}</div>`;
 }
 function renderSettings(){
-  const opt=(name,val,label,cur,desc)=>`<button class="item ${cur===val?'sel':''}" data-act="set" data-k="${name}" data-v="${val}" style="min-height:auto">${name==='control'?controlSVG(val).replace('<svg','<svg style="width:70px;height:70px"'):''}<b>${label}</b><span class="n">${desc}</span></button>`;
-  $('settingsCard').innerHTML=`<h2>せってい</h2>
+  const o=S.opt, opt=(k,v,label,desc)=>`<button class="item ${o[k]===v?'sel':''}" data-act="set" data-k="${k}" data-v="${v}" style="min-height:auto"><b>${label}</b><span class="n">${desc}</span></button>`;
+  $('settingsCard').innerHTML=`<style>#settingsCard .grid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}</style><h2>せってい</h2>
     <div class="sect">メモ</div>
-    <div class="grid">${opt('memo','level','レベルどおり',S.memoAlways?'always':'level','レベル3から かくれる')}${opt('memo','always','いつも みえる',S.memoAlways?'always':'level','どの レベルでも みえる')}</div>
+    <div class="grid">${opt('memo','level','レベルどおり','レベル3から かくれる')}${opt('memo','always','いつも みえる','')}${opt('memo','peek','ボタンで みる','さいしょに みたら かくれる')}${opt('memo','start','スタートだけ','スタートに もどって みる')}</div>
+    <div class="sect">こまった こと（つぎの ゲームから）</div>
+    <div class="grid">${opt('trouble','level','レベルどおり','レベル3・4で おきる')}${opt('trouble','on','いつも おきる','')}${opt('trouble','off','おきない','')}</div>
+    <div class="sect">あまる にもつ（はいたつ・たないれ、つぎの ゲームから）</div>
+    <div class="grid">${opt('extra','on','あり','おおめに もって いる')}${opt('extra','off','なし','ちょうど もって いる')}</div>
+    <div class="sect">しらべた ときの ヒント</div>
+    <div class="grid">${opt('hint','first','1かいめは かくす','「どれかが ちがいます」だけ')}${opt('hint','full','さいしょから くわしく','どこが ちがうか でる')}</div>
+    <div class="sect">おと</div>
+    <div class="grid">${opt('sound','on','あり','')}${opt('sound','off','なし','')}</div>
     <div class="row end"><button class="btn main" data-act="settingsClose">とじる</button></div>`;
 }
 function renderHUD(){
@@ -770,7 +787,7 @@ function renderPanel(){
       ${mm==='start'?`<div class="paper big">${memoHTML(false)}</div>`:''}
       <p>ぜんぶ できたら、「${sc.finish}」を おそう。</p>
       ${msgHTML()}
-      <div class="row end"><button class="btn" data-act="closePanel">とじる</button>${lv().trouble?'<button class="btn" data-act="consult">そうだん する</button>':''}<button class="btn main" data-act="finish">${sc.finish}</button></div>`;
+      <div class="row end"><button class="btn" data-act="closePanel">とじる</button>${troubleOn()?'<button class="btn" data-act="consult">そうだん する</button>':''}<button class="btn main" data-act="finish">${sc.finish}</button></div>`;
     if(mm==='start'){ S.memoViews++; }
   }
   $('panelCard').innerHTML=h;
@@ -827,7 +844,7 @@ function finish(){
   const pr=problems();
   if(!pr.length){ clearGame(); return; }
   sfx.ng();
-  S.checks++; S.lastMsg = S.checks===1 ? {ok:false,text:'どれかが ちがいます。メモと くらべて、なおして みよう。'} : {ok:false,text:'ちがう ところ：',list:pr};
+  S.checks++; S.lastMsg = (S.checks===1 && S.opt.hint==='first') ? {ok:false,text:'どれかが ちがいます。メモと くらべて、なおして みよう。'} : {ok:false,text:'ちがう ところ：',list:pr};
   renderPanel();
 }
 function clearGame(){
@@ -892,11 +909,13 @@ function consultHTML(){
 }
 function consultSay(){
   const c=S.consult, T=S.trouble, pred=PREDS[S.scene][c.pred];
+  if((!T || T.solved) && S.extra.includes(c.subj) && pred==='が おおいです'){ c.reply='あまった ぶんは、もって かえって きてね。'; sfx.open(); renderPanel(); return false; }
   if(!T || T.solved){ c.reply='だいじょうぶ そうですよ。メモを よく みてね。'; sfx.open(); renderPanel(); return false; }
   let ok=false;
   if(T.type==='soldout') ok = c.subj===T.item && pred==='が ありません';
   if(T.type==='short') ok = c.subj===T.item && (pred==='が たりません' || (pred==='が ありません' && bk(T.item)===0));
   if(T.type==='full') ok = c.subj===cellKey(T.unit,T.row) && pred==='が いっぱいで おけません';
+  if(!ok && S.extra.includes(c.subj) && pred==='が おおいです'){ c.reply='あまった ぶんは、もって かえって きてね。'; sfx.open(); renderPanel(); return false; }
   if(!ok){ c.reply='うーん、そうでは ない みたい。もういちど おしえて ください。'; sfx.ng(); renderPanel(); return false; }
   T.solved=true; sfx.ok();
   if(T.type==='soldout'){ for(const o of T.spr) o.visible=true; T.grp.remove(T.sg); c.reply=`ごめんなさい！ ${ITEMS[T.item].name}を たなに ならべました。`; }
@@ -916,8 +935,16 @@ function setupGame(){
   S.order=genOrder(); S.basket={}; S.given={}; S.placed={}; S.sel=null; S.checks=0; S.memoViews=0; S.elapsed=0; S.path=null; S.panel=null; S.lastMsg=null;
   if(S.scene==='delivery'||S.scene==='shelve') for(const e of S.order) S.basket[e.item]=bk(e.item)+e.qty;
   S.trouble=null; S.consult=null;
-  if(lv().trouble) setupTrouble();
-  player.position.set(startPos.x,0,startPos.z); player.rotation.y=Math.PI; S.yaw=0;
+  if(troubleOn()) setupTrouble();
+  // あまる にもつ：おおめに もたせる（かずを かぞえて わたす・おく ため）
+  S.extra=[];
+  if(S.opt.extra==='on' && (S.scene==='delivery'||S.scene==='shelve')){
+    const cand=[...new Set(S.order.map(e=>e.item))].filter(id=>!(S.trouble&&S.trouble.item===id));
+    if(cand.length){ const id=cand[rnd(0,cand.length-1)]; S.basket[id]=bk(id)+rnd(1,2); S.extra.push(id); }
+    if(S.level>=2){ const pool=(S.scene==='delivery'?POOL.deliv:POOL.ware).filter(x=>!S.order.some(e=>e.item===x));
+      if(pool.length){ const dcy=pool[rnd(0,pool.length-1)]; S.basket[dcy]=rnd(1,2); S.extra.push(dcy); } }
+  }
+  player.position.set(startPos.x,0,startPos.z); player.rotation.y=Math.PI/2; S.yaw=0;
   computeNear(); updateCamera(0,true);
 }
 function startScene(sc,lvN){ $('toast').className='hud'; for(const id of ['panel','memoOv','confirmOv','settingsOv','clearOv']) show(id,false); S.scene=sc; S.level=lvN; setupGame(); show('menu',false); show('clearOv',false); renderHowto(false); show('howto',true); S.mode='howto'; renderHUD(); updatePause(); }
@@ -941,7 +968,7 @@ function act(a,d){
     case 'howtoClose': show('howto',false); updatePause(); break;
     case 'settings': renderSettings(); show('settingsOv',true); updatePause(); break;
     case 'settingsClose': show('settingsOv',false); updatePause(); renderHUD(); break;
-    case 'set': S.memoAlways=(d.v==='always'); renderSettings(); renderHUD(); break;
+    case 'set': S.opt[d.k]=d.v; saveOpt(); renderSettings(); renderHUD(); break;
     case 'quit': show('confirmOv',true); updatePause(); break;
     case 'quitNo': show('confirmOv',false); updatePause(); break;
     case 'quitYes': toMenu(); break;
@@ -1019,9 +1046,11 @@ function computeNear(){
   let view=null;
   if(near){
     const p=player.position, b=near.aabb, f=near.face||{x:0,z:1};
-    const dx=p.x-near.x, dz=p.z-near.z, fwd=dx*f.x+dz*f.z, lat=Math.abs(dx*f.z-dz*f.x);
+    const cx=(b.minX+b.maxX)/2, cz=(b.minZ+b.maxZ)/2;
+    const dx=p.x-cx, dz=p.z-cz, fwd=dx*f.x+dz*f.z, lat=Math.abs(dx*f.z-dz*f.x);
     const halfD = f.z ? (b.maxZ-b.minZ)/2 : (b.maxX-b.minX)/2, halfW = f.z ? (b.maxX-b.minX)/2 : (b.maxZ-b.minZ)/2;
-    if(fwd>halfD-0.05 && lat<halfW+0.6) view=near; }
+    if(near.type==='start') { if(Math.hypot(p.x-near.stand.x, p.z-near.stand.z)<1.3) view=near; }
+    else if(fwd>halfD-0.05 && lat<halfW+0.6) view=near; }
   S.view=view;
 }
 const camLook=new THREE.Vector3(0,1,0), _tg=new THREE.Vector3(), _lk=new THREE.Vector3();
@@ -1086,6 +1115,7 @@ window.__game = { S, CFG, camera, player, get stations(){return stations;},
       if(!obj) return null; obj.updateWorldMatrix(true,false); const v=new THREE.Vector3(); obj.getWorldPosition(v); v.project(camera);
       return { x:(v.x+1)/2*innerWidth, y:(1-v.y)/2*innerHeight }; },
     consult:(subj,pred)=>{ S.consult={subj,pred:PREDS[S.scene].indexOf(pred),reply:null}; const r=consultSay(); S.consult=null; return r; },
+    setOpt:(k,v)=>{ S.opt[k]=v; },
     trouble:()=>S.trouble&&{type:S.trouble.type,item:S.trouble.item,key:S.trouble.unit&&cellKey(S.trouble.unit,S.trouble.row),solved:S.trouble.solved},
     joystick:(x,y)=>{ joy.x=x; joy.y=y; },
   } };
