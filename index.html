@@ -209,11 +209,11 @@ const CFG = {
   levels: [null,
     { types:[2,2], qty:[1,2], memo:'always', trouble:false },
     { types:[3,3], qty:[1,3], memo:'always', trouble:false },
-    { types:[4,4], qty:[1,4], memo:'peek',   trouble:true  },
-    { types:[4,4], qty:[1,4], memo:'start',  trouble:true  },
+    { types:[3,3], qty:[1,4], memo:'peek',   trouble:true  },
+    { types:[3,3], qty:[1,4], memo:'start',  trouble:true  },
   ],
   // はいたつ：届け先の数・品物の種類・数量
-  delivery: { houses:[0,2,3,4,4], kinds:[0,2,3,3,3], qty:[null,[1,2],[1,3],[1,3],[1,3]] },
+  delivery: { houses:[0,2,3,3,3], kinds:[0,2,3,3,3], qty:[null,[1,2],[1,3],[1,3],[1,3]] },
   // たないれ：置き場所の指定（番号 → 列と段）
   shelveDest: [null,'number','grid','grid','grid'],
 };
@@ -234,8 +234,8 @@ const POOL = {
 const SCENES = {
   otsukai:{ title:'おつかい', sub:'おみせで たのまれた ものを かう', startName:'レジ', finish:'おかいけい する' },
   picking:{ title:'ピッキング', sub:'そうこで にもつを あつめる', startName:'しゅっかぐち', finish:'しゅっか する' },
-  delivery:{ title:'はいたつ', sub:'いえに にもつを とどける', startName:'はいたつセンター', finish:'はいたつ かんりょう' },
-  shelve:{ title:'たないれ', sub:'にもつを きまった たなに おく', startName:'にもつ おきば', finish:'たないれ かんりょう' },
+  delivery:{ title:'はいたつ', sub:'いえに にもつを とどける', startName:'はいたつセンター', finish:'おわった ことを ほうこく' },
+  shelve:{ title:'たないれ', sub:'にもつを きまった たなに おく', startName:'にもつ おきば', finish:'おわった ことを ほうこく' },
 };
 const UNIT_COLORS = [
   {name:'あか', c:'#e0473a'}, {name:'あお', c:'#2f6fd6'}, {name:'きいろ', c:'#f2c230'},
@@ -277,6 +277,10 @@ const DRAW = {
   bento:c=>{P(c); rr(c,14,30,100,74,10,'#3a3a46'); rr(c,22,38,46,58,4,'#ffffff'); rr(c,72,38,34,26,4,'#f2a33a'); rr(c,72,68,34,28,4,'#58b04c'); c.fillStyle='#d8333a'; c.beginPath(); c.arc(45,67,8,0,7); c.fill(); },
   paper:c=>{P(c); rr(c,20,18,88,96,4,'#f4f4f0'); c.fillStyle='#2b2b2b'; c.fillRect(30,28,68,14); c.lineWidth=4; for(let y=54;y<106;y+=12){c.beginPath(); c.moveTo(30,y); c.lineTo(98,y); c.stroke();} },
 };
+// かぞえかた（1ぽん・2ほん・3ぼん、1つう、1ぶ など）
+const COUNTER = { banana:'ほん', carrot:'ほん', milk:'ほん', screw:'ほん', rope:'ほん', flower:'ほん', letter:'つう', paper:'ぶ' };
+function suf(id,n){ const c=COUNTER[id]||'こ'; if(c==='ほん') return ({1:'ぽん',3:'ぼん',6:'ぽん',8:'ぽん',10:'ぽん'})[n]||'ほん'; return c; }
+const cnt=(id,n)=>`${n}${suf(id,n)}`;
 const iconCache = {}, urlCache = {}, texCache = {};
 function iconCanvas(id){ if(iconCache[id]) return iconCache[id];
   const cv=document.createElement('canvas'); cv.width=cv.height=128; const c=cv.getContext('2d'); DRAW[id](c); return iconCache[id]=cv; }
@@ -394,16 +398,17 @@ function makeShelf(id,x,z,w,items,label,labelOpt){
   const st={ id, type:'shelf', label:label||'', items, x, z, aabb:aabb(x,z,w,d), stand:{x, z:z+d/2+0.9} };
   addStation(st,g); return st;
 }
-function makeStart(x,z,name,look,w=2.8){
+// つくえは たて（おくゆき）に ながく、店の人は つくえの よこで 横むき
+function makeStart(x,z,name,look,L=2.4){
   const g=new THREE.Group(); g.position.set(x,0,z);
-  const c=box(w,1.0,1.0,'#7fb6a6'); c.position.y=0.5; g.add(c);
-  const top=box(w+0.1,0.08,1.1,'#5c8f80'); top.position.y=1.02; g.add(top);
-  if(S.scene==='otsukai'){ const reg=box(0.5,0.32,0.42,'#4a5562'); reg.position.set(-0.2,1.22,-0.15); g.add(reg);
-    const scr=box(0.4,0.22,0.04,'#9fd3ff'); scr.position.set(-0.2,1.5,-0.3); scr.rotation.x=-0.3; g.add(scr); }
-  const st={ id:'start', type:'start', label:name, x, z, aabb:aabb(x,z,w,1.0), stand:{x, z:z+0.5+0.9} };
-  const per=makePerson(look); per.position.set(0.75,0,-0.95); per.rotation.y=-Math.PI/2; g.add(per); npcs.push({g:per, st, home:-Math.PI/2, face:false});
-  const sg=sign(name,{bg:'#12866b',fg:'#fff',w:Math.max(256,name.length*70+60),size:64,scale:0.5}); sg.position.set(0,2.45,-0.95); g.add(sg);
-  addStation(st,g); obstacles.push(aabb(x+0.75,z-0.95,0.8,0.8)); return st;
+  const c=box(1.0,1.0,L,'#7fb6a6'); c.position.set(-0.35,0.5,0); g.add(c);
+  const top=box(1.1,0.08,L+0.1,'#5c8f80'); top.position.set(-0.35,1.02,0); g.add(top);
+  if(S.scene==='otsukai'){ const reg=box(0.42,0.32,0.5,'#4a5562'); reg.position.set(-0.35,1.22,0.35); g.add(reg);
+    const scr=box(0.04,0.22,0.4,'#9fd3ff'); scr.position.set(-0.2,1.5,0.35); scr.rotation.z=0.3; g.add(scr); }
+  const st={ id:'start', type:'start', label:name, x, z, aabb:aabb(x+0.15,z,2.0,L), stand:{x:x-0.35, z:z+L/2+0.9} };
+  const per=makePerson(look); per.position.set(0.65,0,0.2); per.rotation.y=-Math.PI/2; g.add(per); npcs.push({g:per, st, home:-Math.PI/2, face:false});
+  const sg=sign(name,{bg:'#12866b',fg:'#fff',w:Math.max(256,name.length*70+60),size:64,scale:0.5}); sg.position.set(0.15,2.45,-0.4); g.add(sg);
+  addStation(st,g); return st;
 }
 function makeUnit(id,x,z,mode,idx){
   const w=3,d=0.9,h=2.5,g=new THREE.Group(); g.position.set(x,0,z);
@@ -430,7 +435,7 @@ function makeHouse(id,hi,x,z,face){
   const H=HOUSES[hi], s=3.4, g=new THREE.Group(); g.position.set(x,0,z);
   const body=box(s,2.4,s,'#f6efe2'); body.position.y=1.2; g.add(body);
   const roof=new THREE.Mesh(new THREE.ConeGeometry(s*0.82,1.6,4), lam('#9b5a3c')); roof.rotation.y=Math.PI/4; roof.position.y=3.2; g.add(roof);
-  const door=box(1.0,1.7,0.12,H.door); const fx=face.x, fz=face.z;
+  const door=box(1.0,1.7,0.12,H.door); door.userData.door=true; const fx=face.x, fz=face.z;
   door.position.set(fx*(s/2+0.04),0.85,fz*(s/2+0.04)); door.rotation.y=Math.atan2(fx,fz); g.add(door);
   const sg=sign(H.name,{w:220,size:70,scale:0.9}); sg.position.set(fx*(s/2+0.5),2.75,fz*(s/2+0.5)); g.add(sg);
   const gift=new THREE.Group(); gift.position.set(fx*(s/2+0.45)+fz*1.1,0.35,fz*(s/2+0.45)-fx*1.1); g.add(gift);
@@ -450,28 +455,28 @@ function buildWorld(sc){
     const items=shuffle(POOL.food); let k=0, n=1;
     for(const z of [-6,0]) for(const x of [-5,5]){ const its=[items[k++],items[k++]], txt=its.map(i=>ITEMS[i].name).join('　');
       makeShelf('s'+n,x,z,4.2,its,txt,{w:txt.length*64+70,size:62,scale:0.62,bg:'#fff7dc'}); n++; }
-    makeStart(0,4,SCENES.otsukai.startName,STAFF.otsukai); startPos={x:0,z:5.4};
+    const s0=makeStart(0,4,SCENES.otsukai.startName,STAFF.otsukai); startPos={...s0.stand};
   } else if(sc==='picking'){
     room(26,24,'#d9dde1','#cdd2d7','#a9b4bf');
     const items=shuffle(POOL.ware); const counts=shuffle([2,2,1,1,1,1]); let k=0, n=0;
     for(const z of [-7,-1]) for(const x of [-8,0,8]){ const c=counts[n]; const L='ABCDEF'[n];
       makeShelf('s'+L,x,z,4.2,items.slice(k,k+c),L,{w:128,size:84,bg:'#1d2b3a',fg:'#fff',scale:0.95}); k+=c; n++; }
-    makeStart(0,5.5,SCENES.picking.startName,STAFF.picking); startPos={x:0,z:6.9};
+    const s0=makeStart(0,5.5,SCENES.picking.startName,STAFF.picking); startPos={...s0.stand};
   } else if(sc==='shelve'){
     room(24,20,'#d9dde1','#cdd2d7','#a9b4bf');
     const mode=CFG.shelveDest[S.level];
-    [-8,-4,0,4,8].forEach((x,i)=>makeUnit('u'+i,x,-5.5,mode,i));
-    makeStart(0,4,SCENES.shelve.startName,STAFF.shelve); startPos={x:0,z:5.4};
+    [-7.5,-2.5,2.5,7.5].forEach((x,i)=>makeUnit('u'+i,x,-5.5,mode,i));
+    const s0=makeStart(0,4,SCENES.shelve.startName,STAFF.shelve); startPos={...s0.stand};
     const cart=box(1.4,0.6,0.9,'#c98a4b'); cart.position.set(2.7,0.3,4); world.add(cart); obstacles.push(aabb(2.7,4,1.4,0.9,0.8));
   } else {
     room(32,30,'#9ccc7c','#92c272','#d7c9a8',true);
     const road=new THREE.Mesh(new THREE.PlaneGeometry(4,30),lam('#e2d6b8')); road.rotation.x=-Math.PI/2; road.position.set(0,0.01,0); world.add(road);
     const road2=new THREE.Mesh(new THREE.PlaneGeometry(32,4),lam('#e2d6b8')); road2.rotation.x=-Math.PI/2; road2.position.set(0,0.012,-5); world.add(road2);
     const hs=shuffle([0,1,2,3,4,5]);
-    const spots=[[-9,-10.5,{x:0,z:1}],[0,-10.5,{x:0,z:1}],[9,-10.5,{x:0,z:1}],[-11.5,1,{x:1,z:0}],[11.5,1,{x:-1,z:0}],[-5,6,{x:1,z:0}]];
+    const spots=[[-8,-10,{x:0,z:1}],[6,-10,{x:0,z:1}],[-10,0.5,{x:0,z:1}],[9,0.5,{x:0,z:1}]];
     spots.forEach(([x,z,f],i)=>makeHouse('h'+hs[i],hs[i],x,z,f));
     for(const [x,z] of [[-14,-13],[14,-13],[-5,-13],[5,-13],[14,8],[-14,9],[11,12],[13,-6],[-13,-6]]) tree(x,z);
-    makeStart(5,10,SCENES.delivery.startName,STAFF.delivery); startPos={x:5,z:11.4};
+    const s0=makeStart(5,10,SCENES.delivery.startName,STAFF.delivery); startPos={...s0.stand};
   }
   buildGrid();
 }
@@ -509,7 +514,7 @@ function entryDone(e){
 function memoHTML(progress){
   const rows=S.order.map(e=>{
     const done=progress&&entryDone(e), ck=progress?`<span class="ck">${done?'✓':'　'}</span>`:'';
-    const nm=ITEMS[e.item].name, q=`<span class="q">${e.qty}</span>こ`;
+    const nm=ITEMS[e.item].name, q=`<span class="q">${e.qty}</span>${suf(e.item,e.qty)}`;
     if(S.scene==='otsukai') return `<div class="mrow ${done?'done':''}">${ck}${img(e.item)}${nm}　${q}</div>`;
     if(S.scene==='picking') return `<div class="mrow ${done?'done':''}">${ck}<span class="tag">${e.shelf.label}</span>${img(e.item)}${nm}　${q}</div>`;
     if(S.scene==='delivery'){ const H=HOUSES[e.house.hi]; const dot=S.level<=1?`<span class="dot" style="background:${H.door}"></span>`:'';
@@ -588,7 +593,7 @@ function rayHits(x,y){ ndc.set(x/innerWidth*2-1, -(y/innerHeight)*2+1); ray.setF
 function interactiveAt(x,y){
   const v=S.view; if(!v||S.mode!=='play') return false;
   return rayHits(x,y).some(h=>{ const u=h.object.userData; if(u.stationId!==v.id) return false;
-    return u.takeItem || u.placedItem || (u.cellRow!==undefined && S.sel); });
+    return u.takeItem || u.placedItem || u.giftItem || (u.cellRow!==undefined && S.sel) || (v.type==='house' && S.sel); });
 }
 function handleTap(x,y){
   if(S.mode!=='play'||S.paused) return;
@@ -599,9 +604,16 @@ function handleTap(x,y){
     if(st.type==='shelf'){ const it=hits.find(h=>h.object.userData.takeItem && h.object.userData.stationId===st.id);
       if(it) takeItem(it.object.userData.takeItem); return; }
     if(st.type==='unit'){ unitTap(st,hits); return; }
-    if(st.type==='start'||st.type==='house'){ openPanel(st); return; }
+    if(st.type==='house'){ houseTap(st,hits); return; }
+    if(st.type==='start'){ openPanel(st); return; }
   }
   if(st && st.type==='unit' && S.sel) toast('たなの まえまで いこう',true);
+}
+function houseTap(h,hits){
+  const gs=hits.find(x=>x.object.userData.giftItem && x.object.userData.stationId===h.id);
+  if(S.sel && bk(S.sel)>0){ give(h,S.sel); return; }
+  if(gs){ takeback(h,gs.object.userData.giftItem); return; }
+  toast('したの もっている ものを タップして えらんでね',true);
 }
 function unitTap(u,hits){
   const sp=hits.find(h=>h.object.userData.placedItem && h.object.userData.stationId===u.id);
@@ -683,8 +695,8 @@ function renderHowto(resume){
   const steps={
     otsukai:[['memo','メモを みる','かう ものと かずを たしかめる'],['tap','たなへ いく',move],['take','かごに いれる','たなの まえで しなものを タップ'],['back','レジへ もどる',`レジで「${sc.finish}」`]],
     picking:[['memo','メモを みる','たなの もじ・しなもの・かずを たしかめる'],['tap','たなへ いく',move],['take','かごに いれる','たなの まえで しなものを タップ'],['back','しゅっかぐちへ',`「${sc.finish}」で しらべる`]],
-    delivery:[['memo','メモを みる','だれに なにを いくつ わたすか'],['tap','いえへ いく',move+'。なまえの ふだを みよう'],['give','わたす','もっている ものを タップして わたす'],['back','センターへ もどる',`「${sc.finish}」で しらべる`]],
-    shelve:[['memo','メモを みる','なにを どこに おくか'],['tap','たなを さがす',move],['put','えらんで おく','もっている ものを タップして えらび、たなの おく ばしょを タップ'],['back','おきばへ もどる',`「${sc.finish}」で しらべる`]],
+    delivery:[['memo','メモを みる','だれに なにを いくつ わたすか'],['tap','いえへ いく',move+'。なまえの ふだを みよう'],['give','わたす','もっている ものを タップして えらび、いえを タップ'],['back','センターへ もどる',`おわったら「${sc.finish}」`]],
+    shelve:[['memo','メモを みる','なにを どこに おくか'],['tap','たなを さがす',move],['put','えらんで おく','もっている ものを タップして えらび、たなの おく ばしょを タップ'],['back','おきばへ もどる',`おわったら「${sc.finish}」`]],
   }[S.scene];
     const notes=[];
   if(S.scene==='shelve'&&CFG.shelveDest[S.level]==='grid') notes.push('「C-3」は、<b>C</b>の たなの、したから <b>3</b>だんめ。');
@@ -693,6 +705,7 @@ function renderHowto(resume){
   notes.push('まちがえて いたら、なおして もういちど しらべよう。');
   if(S.scene==='otsukai'||S.scene==='picking') notes.push('まちがえて とったら、したの かごの しなものを タップ。ひとつ へらせます。');
   if(S.scene==='shelve') notes.push('まちがえて おいたら、たなの しなものを タップ。てもとに もどります。');
+  if(S.scene==='delivery') notes.push('まちがえて わたしたら、いえの まえの にもつを タップ。かえして もらえます。');
   if(lv().trouble) notes.push(`こまった ことが おきるかも。そのときは ${sc.startName}の ${STAFF_NAME[S.scene]}に そうだん しよう。`);
   notes.push('がめんの みぎがわを ゆびで よこに うごかすと、まわりが みられます。');
   $('howtoCard').innerHTML=`<h2>${sc.title}　レベル${S.level}　あそびかた</h2>
@@ -721,7 +734,7 @@ function renderHUD(){
 function renderBasket(){
   const ids=Object.keys(S.basket).filter(k=>S.basket[k]>0);
   const lbl=(S.scene==='delivery'||S.scene==='shelve')?'もっている もの':'かご';
-  $('basket').innerHTML=`<span class="lbl">${lbl}</span>`+(ids.length?ids.map(id=>`<button class="bk ${S.scene==='shelve'&&S.sel===id?'sel':''}" data-act="bk" data-item="${id}">${img(id)}<b>${S.basket[id]}</b>${S.scene==='otsukai'||S.scene==='picking'?'<span class="minus">−</span>':''}</button>`).join(''):'<span class="empty">まだ ないよ</span>');
+  $('basket').innerHTML=`<span class="lbl">${lbl}</span>`+(ids.length?ids.map(id=>`<button class="bk ${(S.scene==='shelve'||S.scene==='delivery')&&S.sel===id?'sel':''}" data-act="bk" data-item="${id}">${img(id)}<b>${S.basket[id]}</b>${S.scene==='otsukai'||S.scene==='picking'?'<span class="minus">−</span>':''}</button>`).join(''):'<span class="empty">まだ ないよ</span>');
 }
 
 /* ================= パネル（たな・いえ・スタート） ================= */
@@ -732,12 +745,12 @@ function renderPanel(){
   const close='<div class="row end"><button class="btn" data-act="closePanel">とじる</button></div>';
   if(st.type==='shelf'){
     h=`<h2>${st.label||'たな'}</h2><p>ほしい ものを タップすると かごに はいります。</p>
-      <div class="grid">${st.items.map(id=>`<button class="item" data-act="take" data-item="${id}">${img(id)}<b>${ITEMS[id].name}</b><span class="n">かごに ${bk(id)}こ</span></button>`).join('')}</div>${msgHTML()}${close}`;
+      <div class="grid">${st.items.map(id=>`<button class="item" data-act="take" data-item="${id}">${img(id)}<b>${ITEMS[id].name}</b><span class="n">かごに ${cnt(id,bk(id))}</span></button>`).join('')}</div>${msgHTML()}${close}`;
   } else if(st.type==='house'){
     const g=S.given[st.id]||{}, gids=Object.keys(g).filter(k=>g[k]>0), mine=Object.keys(S.basket).filter(k=>S.basket[k]>0);
     h=`<h2>${st.label}の いえ</h2>
       <div class="sect">わたす もの（タップで ひとつ わたす）</div>
-      <div class="grid">${mine.length?mine.map(id=>`<button class="item" data-act="give" data-item="${id}">${img(id)}<b>${ITEMS[id].name}</b><span class="n">のこり ${S.basket[id]}こ</span></button>`).join(''):'<p>もう もっていないよ</p>'}</div>
+      <div class="grid">${mine.length?mine.map(id=>`<button class="item" data-act="give" data-item="${id}">${img(id)}<b>${ITEMS[id].name}</b><span class="n">のこり ${cnt(id,S.basket[id])}</span></button>`).join(''):'<p>もう もっていないよ</p>'}</div>
       <div class="sect">わたした もの（タップで ひとつ もどす）</div>
       <div class="row">${gids.length?gids.map(id=>`<button class="chip" data-act="takeback" data-item="${id}">${img(id)}<b>${g[id]}</b></button>`).join(''):'<span class="n">まだ ないよ</span>'}</div>${msgHTML()}${close}`;
   } else if(st.type==='unit'){
@@ -746,7 +759,7 @@ function renderPanel(){
     const rows=[...st.rows].reverse();
     h=`<h2>${title}</h2>
       <div class="sect">① おく ものを えらぶ</div>
-      <div class="grid">${mine.length?mine.map(id=>`<button class="item ${S.sel===id?'sel':''}" data-act="select" data-item="${id}">${img(id)}<b>${ITEMS[id].name}</b><span class="n">のこり ${S.basket[id]}こ</span></button>`).join(''):'<p>もう もっていないよ</p>'}</div>
+      <div class="grid">${mine.length?mine.map(id=>`<button class="item ${S.sel===id?'sel':''}" data-act="select" data-item="${id}">${img(id)}<b>${ITEMS[id].name}</b><span class="n">のこり ${cnt(id,S.basket[id])}</span></button>`).join(''):'<p>もう もっていないよ</p>'}</div>
       <div class="sect">② おく ばしょを タップ（おいた ものを タップで もどす）</div>
       <div class="cells">${rows.map(r=>{ const k=cellKey(st,r), p=S.placed[k]||{}, pids=Object.keys(p).filter(x=>p[x]>0);
         return `<div class="cell" data-act="place" data-cell="${r}"><span class="ln">${st.mode==='grid'?st.label+'-'+r:'ここ'}</span><span class="in">${pids.map(id=>`<button class="chip" data-act="unplace" data-cell="${r}" data-item="${id}">${img(id)}<b>${p[id]}</b></button>`).join('')}</span></div>`; }).join('')}</div>${msgHTML()}${close}`;
@@ -771,14 +784,14 @@ function takeItem(id){
 }
 function basketTap(id){
   if(S.scene==='otsukai'||S.scene==='picking'){ if(bk(id)>0){ S.basket[id]--; sfx.put(); toast(`${ITEMS[id].name}を ひとつ へらしたよ`); renderHUD(); if(S.panel) renderPanel(); } }
-  else if(S.scene==='shelve'){ S.sel = S.sel===id ? null : id; if(S.sel) sfx.open(); renderHUD(); if(S.panel) renderPanel(); }
+  else if(S.scene==='shelve'||S.scene==='delivery'){ S.sel = S.sel===id ? null : id; if(S.sel) sfx.open(); renderHUD(); if(S.panel) renderPanel(); }
 }
-function give(id){
-  const h=S.panel; if(bk(id)<=0) return;
+function give(h,id){
+  if(!h||bk(id)<=0) return;
   const g=(S.given[h.id] ||= {});
-  g[id]=(g[id]||0)+1; S.basket[id]--; sfx.pick(); S.lastMsg=null; giftVisual(h); renderPanel(); renderHUD();
+  g[id]=(g[id]||0)+1; S.basket[id]--; if(S.basket[id]<=0) S.sel=null; sfx.pick(); toast(`${h.label}に ${ITEMS[id].name}を わたしたよ`); S.lastMsg=null; giftVisual(h); renderPanel(); renderHUD();
 }
-function takeback(id){ const h=S.panel, g=S.given[h.id]; if(!g||!g[id]) return; g[id]--; S.basket[id]=bk(id)+1; sfx.put(); giftVisual(h); renderPanel(); renderHUD(); }
+function takeback(h,id){ const g=S.given[h.id]; if(!g||!g[id]) return; g[id]--; S.basket[id]=bk(id)+1; sfx.put(); toast(`${ITEMS[id].name}を かえして もらったよ`); giftVisual(h); renderPanel(); renderHUD(); }
 function place(u,row){
   const id=S.sel; if(!id||bk(id)<=0){ toast('さきに おく ものを えらんでね',true); return; }
   const k=cellKey(u,row), p=(S.placed[k] ||= {});
@@ -788,7 +801,7 @@ function place(u,row){
 }
 function unplace(u,row,id){ const p=S.placed[cellKey(u,row)]; if(!p||!p[id]) return; p[id]--; S.basket[id]=bk(id)+1; sfx.put(); toast(`${ITEMS[id].name}を もどしたよ`); unitVisual(u); renderPanel(); renderHUD(); }
 function giftVisual(h){ h.gift.clear(); const g=S.given[h.id]||{}; let n=0;
-  for(const id in g) for(let i=0;i<g[id]&&n<8;i++,n++){ const s=itemSprite(id,0.55); s.position.set((n%4)*0.0,0.05+n*0.0,0); s.position.x=((n%4)-1.5)*0.5; s.position.y=Math.floor(n/4)*0.55; h.gift.add(s); } }
+  for(const id in g) for(let i=0;i<g[id]&&n<8;i++,n++){ const s=itemSprite(id,0.55); s.position.set((n%4)*0.0,0.05+n*0.0,0); s.position.x=((n%4)-1.5)*0.5; s.position.y=Math.floor(n/4)*0.55; s.userData={stationId:h.id, giftItem:id}; h.gift.add(s); } }
 function unitVisual(u){ for(const r of u.rows){ const G2=u.cellG[r]; G2.clear(); const p=S.placed[cellKey(u,r)]||{}; let n=0;
   const baseY = r===0 ? 0.48 : 0.06+(r-1)*0.8+0.42;
   for(const id in p) for(let i=0;i<p[id]&&n<12;i++,n++){ const s=itemSprite(id,0.55); const row0 = r===0 ? Math.floor(n/5) : 0;
@@ -797,15 +810,15 @@ function unitVisual(u){ for(const r of u.rows){ const G2=u.cellG[r]; G2.clear();
 function problems(){
   const out=[], nm=id=>ITEMS[id].name;
   if(S.scene==='otsukai'||S.scene==='picking'){
-    for(const e of S.order){ const h=bk(e.item); if(h<e.qty) out.push(`${nm(e.item)}が あと ${e.qty-h}こ たりない`); if(h>e.qty) out.push(`${nm(e.item)}が ${h-e.qty}こ おおい`); }
+    for(const e of S.order){ const h=bk(e.item); if(h<e.qty) out.push(`${nm(e.item)}が あと ${cnt(e.item,e.qty-h)} たりない`); if(h>e.qty) out.push(`${nm(e.item)}が ${cnt(e.item,h-e.qty)} おおい`); }
     for(const id in S.basket) if(S.basket[id]>0&&!needFor(id)) out.push(`${nm(id)}は メモに ない`);
   } else if(S.scene==='delivery'){
     for(const h of stations.filter(s=>s.type==='house')){ const g=S.given[h.id]||{}, exp=S.order.filter(e=>e.house===h);
-      for(const e of exp){ const n=g[e.item]||0; if(n<e.qty) out.push(`${h.label}に ${nm(e.item)}が あと ${e.qty-n}こ`); if(n>e.qty) out.push(`${h.label}に ${nm(e.item)}が ${n-e.qty}こ おおい`); }
+      for(const e of exp){ const n=g[e.item]||0; if(n<e.qty) out.push(`${h.label}に ${nm(e.item)}が あと ${cnt(e.item,e.qty-n)}`); if(n>e.qty) out.push(`${h.label}に ${nm(e.item)}が ${cnt(e.item,n-e.qty)} おおい`); }
       for(const id in g) if(g[id]>0&&!exp.some(e=>e.item===id)) out.push(`${h.label}に ${nm(id)}は ちがう`); }
   } else {
     for(const u of stations.filter(s=>s.type==='unit')) for(const r of u.rows){ const p=S.placed[cellKey(u,r)]||{}, exp=S.order.filter(e=>e.unit===u&&e.row===r);
-      for(const e of exp){ const n=p[e.item]||0; if(n<e.qty) out.push(`${destText(u,r)}に ${nm(e.item)}が あと ${e.qty-n}こ`); if(n>e.qty) out.push(`${destText(u,r)}に ${nm(e.item)}が ${n-e.qty}こ おおい`); }
+      for(const e of exp){ const n=p[e.item]||0; if(n<e.qty) out.push(`${destText(u,r)}に ${nm(e.item)}が あと ${cnt(e.item,e.qty-n)}`); if(n>e.qty) out.push(`${destText(u,r)}に ${nm(e.item)}が ${cnt(e.item,n-e.qty)} おおい`); }
       for(const id in p) if(p[id]>0&&!exp.some(e=>e.item===id)) out.push(`${destText(u,r)}に ${nm(id)}は ちがう`); }
   }
   return out;
@@ -851,7 +864,9 @@ function setupTrouble(){
     // いっぱい：おく ばしょに ほかの にもつが ある
     const u=e.unit, r=e.row, junk=new THREE.Group();
     const baseY = r===0 ? 0.48 : 0.06+(r-1)*0.8+0.42;
-    for(let i=0;i<5;i++){ const s=itemSprite('other',0.6); s.position.set(-1.1+i*0.55, baseY, 0.12); junk.add(s); }
+    const y0 = r===0 ? 0.06 : 0.06+(r-1)*0.8;
+    for(let i=0;i<3;i++){ const b=box(0.8,0.58,0.62,'#c49a63'); b.position.set(-0.92+i*0.92, y0+0.04+0.29, 0.02); junk.add(b);
+      const t=box(0.82,0.02,0.14,'#e9d7a8'); t.position.set(-0.92+i*0.92, y0+0.04+0.59, 0.02); junk.add(t); }
     u.cellG[r].parent.add(junk);
     S.trouble={type:'full', unit:u, row:r, entry:e, junk, solved:false};
   }
@@ -905,7 +920,7 @@ function setupGame(){
   player.position.set(startPos.x,0,startPos.z); player.rotation.y=Math.PI; S.yaw=0;
   computeNear(); updateCamera(0,true);
 }
-function startScene(sc,lvN){ for(const id of ['panel','memoOv','confirmOv','settingsOv','clearOv']) show(id,false); S.scene=sc; S.level=lvN; setupGame(); show('menu',false); show('clearOv',false); renderHowto(false); show('howto',true); S.mode='howto'; renderHUD(); updatePause(); }
+function startScene(sc,lvN){ $('toast').className='hud'; for(const id of ['panel','memoOv','confirmOv','settingsOv','clearOv']) show(id,false); S.scene=sc; S.level=lvN; setupGame(); show('menu',false); show('clearOv',false); renderHowto(false); show('howto',true); S.mode='howto'; renderHUD(); updatePause(); }
 function begin(){
   audioOn(); show('howto',false);
   const mm=memoMode();
@@ -937,8 +952,8 @@ function act(a,d){
     case 'closePanel': closePanel(); break;
     case 'take': takeItem(d.item); break;
     case 'bk': basketTap(d.item); break;
-    case 'give': give(d.item); break;
-    case 'takeback': takeback(d.item); break;
+    case 'give': give(S.panel,d.item); break;
+    case 'takeback': takeback(S.panel,d.item); break;
     case 'select': S.sel=d.item; renderPanel(); break;
     case 'place': place(S.panel,+d.cell); break;
     case 'unplace': unplace(S.panel,+d.cell,d.item); break;
@@ -976,7 +991,7 @@ function update(dt){
   else if(S.path){
     const t=S.path[0], dx=t.x-player.position.x, dz=t.z-player.position.z, d=Math.hypot(dx,dz), step=CFG.player.speed*dt;
     if(d<=step){ player.position.x=t.x; player.position.z=t.z; S.path.shift();
-      if(!S.path.length){ S.path=null; if(S.pathStation){ const st=S.pathStation; S.pathStation=null; player.rotation.y=Math.atan2(st.x-player.position.x, st.z-player.position.z); if(st.type==='house'||st.type==='start') openPanel(st); } } }
+      if(!S.path.length){ S.path=null; if(S.pathStation){ const st=S.pathStation; S.pathStation=null; player.rotation.y=Math.atan2(st.x-player.position.x, st.z-player.position.z); if(st.type==='start') openPanel(st); } } }
     else { mx=dx/d; mz=dz/d; }
   }
   if(mx||mz){
@@ -988,10 +1003,11 @@ function update(dt){
   computeNear();
   if(S.view && !(ix||iy) && !S.path){ const f=S.view.face||{x:0,z:1}; let dy=Math.atan2(f.x,f.z)-S.yaw; dy=Math.atan2(Math.sin(dy),Math.cos(dy)); S.yaw+=dy*Math.min(1,3*dt); }
   const near=S.near, A=$('action');
-  if(near&&!S.path&&(near.type==='house'||near.type==='start')){ A.hidden=false; const t= near.type==='house'?`${near.label}に わたす`:SCENES[S.scene].finish;
+  if(near&&!S.path&&near.type==='start'){ A.hidden=false; const t=`${STAFF_NAME[S.scene]}と はなす`;
     if(A.textContent!==t) A.textContent=t; } else A.hidden=true;
   let hint='';
   if(S.view?.type==='shelf') hint='しなものを タップすると かごに はいるよ';
+  else if(S.view?.type==='house') hint = S.sel ? `${ITEMS[S.sel].name}を わたすなら、いえを タップ` : 'したの もっている ものを タップして えらぼう';
   else if(S.view?.type==='unit') hint = S.sel ? `${ITEMS[S.sel].name}を おく ばしょを タップ` : 'したの もっている ものを タップして えらぼう';
   const Hn=$('hint'); Hn.hidden=!hint; if(Hn.textContent!==hint) Hn.textContent=hint;
 }
@@ -1062,7 +1078,7 @@ window.__game = { S, CFG, camera, player, get stations(){return stations;},
     goTo:id=>goTo(stations.find(s=>s.id===id)),
     open:id=>openPanel(stations.find(s=>s.id===id)),
     close:()=>closePanel(),
-    take:id=>takeItem(id), give:id=>give(id), select:id=>{S.sel=id;}, place:(uid,row)=>place(stations.find(s=>s.id===uid),row), finish:()=>finish(),
+    take:id=>takeItem(id), give:(hid,id)=>give(stations.find(s=>s.id===hid),id), select:id=>{S.sel=id;}, place:(uid,row)=>place(stations.find(s=>s.id===uid),row), finish:()=>finish(),
     tap:(x,y)=>handleTap(x,y), basketTap:id=>basketTap(id),
     // しなもの・おく ばしょ の がめん上の いち（テスト用）
     screenOf:(stId,key,val)=>{ const st=stations.find(s=>s.id===stId); let obj=null;
