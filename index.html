@@ -68,6 +68,19 @@ ruby rt{font-size:.5em;font-weight:400;letter-spacing:0}
 #memoHiddenBox .note{font-size:13px;color:var(--sub)}
 .memoToggle{min-height:44px;padding:4px 12px;font-size:15px;background:#f1ece0}
 .memoCount{margin-top:6px;padding:4px 8px;border-radius:10px;background:#fff1c2;color:#7a5600;font-size:14px;font-weight:700;text-align:center}
+.memoGo{background:#fff1c2;border-radius:12px;padding:8px 10px;font-weight:700;font-size:15px;line-height:1.6}
+.memoGo small{display:block;font-weight:400;color:#7a5600;font-size:13px}
+.pickrow{min-height:56px;border-radius:12px;padding:4px 6px;cursor:pointer;border:3px solid transparent}
+.pickrow.sel{background:#fff1c2;border-color:var(--accent)}
+.holdnote{font-size:13px;color:var(--sub);margin:0 2px 6px;line-height:1.6}
+#memoBtn{position:absolute;left:50%;bottom:100px;transform:translateX(-50%);z-index:5}
+#memoBtn:active{transform:translateX(-50%) translateY(2px)}
+#memoBtn.raise{bottom:170px}
+.st.memo{background:#fff7d6}
+.st.memo.on{border-color:#e0a400}
+.dlist{max-width:560px}
+.dline{flex-wrap:wrap}
+.dline .code{display:inline-block;background:#ffd84d;border-radius:6px;padding:1px 6px;font-size:14px}
 
 #topRight{position:fixed;right:10px;top:10px;display:flex;gap:8px;z-index:70}
 #topRight .btn{padding:6px 12px;font-size:16px}
@@ -110,7 +123,7 @@ ruby rt{font-size:.5em;font-weight:400;letter-spacing:0}
 .scene .em{font-size:44px;display:block;line-height:1.2}
 .scene small{display:block;font-size:13px;font-weight:400;color:var(--sub);line-height:1.6}
 .scene.on{border-color:var(--accent);background:#fff4e6}
-.levels{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.levels{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
 .lv{min-height:84px;border-radius:16px;border:4px solid transparent;background:#fff;padding:8px;font-size:20px;font-weight:700;box-shadow:0 3px 0 rgba(0,0,0,.15);line-height:1.5}
 .lv small{display:block;font-size:13px;font-weight:400;color:var(--sub);line-height:1.5}
 .lv.on{border-color:var(--blue);background:#eef4ff}
@@ -122,7 +135,7 @@ ruby rt{font-size:.5em;font-weight:400;letter-spacing:0}
 .seg button.on{border-color:var(--blue);background:#eef4ff}
 .setnote{font-size:13px;color:var(--sub);margin-top:4px;line-height:1.6}
 .res{text-align:center}
-.res .big{font-size:56px;line-height:1.2}
+.res > .big{font-size:56px;line-height:1.2}
 .res .msg{font-size:24px;font-weight:700;margin:6px 0;line-height:1.8}
 .res .sub{font-size:16px;color:var(--sub);line-height:1.8}
 .dlist{text-align:left;margin:10px auto;max-width:440px}
@@ -142,7 +155,7 @@ ruby rt{font-size:.5em;font-weight:400;letter-spacing:0}
 @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
 @media (max-width:760px){
   .flow{grid-template-columns:repeat(2,1fr)} .two{grid-template-columns:1fr}
-  .scenes,.levels{grid-template-columns:1fr}
+  .scenes{grid-template-columns:1fr} .levels{grid-template-columns:repeat(2,1fr)}
   #memoPanel{width:210px} #bagPanel{width:210px}
 }
 </style>
@@ -156,7 +169,7 @@ ruby rt{font-size:.5em;font-weight:400;letter-spacing:0}
 </script>
 </head>
 <body>
-<!-- build: 2026-10-10 -->
+<!-- build: 2026-10-10b -->
 <canvas id="c"></canvas>
 
 <div id="hud" class="hidden">
@@ -168,6 +181,7 @@ ruby rt{font-size:.5em;font-weight:400;letter-spacing:0}
   </div>
   <div id="joy"><span class="arr" style="left:50%;top:6px;transform:translateX(-50%)">まえ</span><span class="arr" style="left:50%;bottom:6px;transform:translateX(-50%)">うしろ</span><span class="arr" style="left:8px;top:50%;transform:translateY(-50%)">◀</span><span class="arr" style="right:8px;top:50%;transform:translateY(-50%)">▶</span><div id="joyKnob"></div></div>
   <button id="actionBtn" class="btn okb big hidden"></button>
+  <button id="memoBtn" class="btn primary big hidden">📝 メモを <ruby>見<rt>み</rt></ruby>る</button>
   <div id="stationBar" class="scrollable hidden"></div>
   <div id="toast"></div>
 </div>
@@ -187,7 +201,7 @@ ruby rt{font-size:.5em;font-weight:400;letter-spacing:0}
       <div class="step"><span class="num">1</span><div class="ic">📝</div><b>メモを <ruby>見<rt>み</rt></ruby>る</b>なにを いくつ たのまれたか たしかめる</div>
       <div class="step"><span class="num">2</span><div class="ic">👆</div><b>さがして タップ</b>たなの しなものを タップすると かごに 1こ <ruby>入<rt>はい</rt></ruby>る</div>
       <div class="step"><span class="num">3</span><div class="ic">🧺</div><b><ruby>数<rt>かず</rt></ruby>を たしかめる</b>おおすぎたら かごの <span style="color:#b3361f;font-weight:700">－</span> で もどす</div>
-      <div class="step"><span class="num">4</span><div class="ic">✅</div><b>わたす</b>レジ・しゅっかぐち・おうちで「わたす」を おす</div>
+      <div class="step"><span class="num">4</span><div class="ic">✅</div><b>わたす・けんぴん</b>レジ・しゅっかぐちで「わたす」。たないれは ぜんぶ しまったら「けんぴん」</div>
     </div>
     <h2>うごきかた</h2>
     <div class="two">
@@ -198,8 +212,8 @@ ruby rt{font-size:.5em;font-weight:400;letter-spacing:0}
     <div class="two">
       <div class="box"><div class="ic">🛒</div><div><b>おつかい</b>：スーパーで しなものを かって、レジで わたす。</div></div>
       <div class="box"><div class="ic">📦</div><div><b><ruby>倉庫<rt>そうこ</rt></ruby>の しごと</b>：メモの ばんごう（<b>A-1</b> など）の たなを さがして、しゅっかぐちで わたす。</div></div>
-      <div class="box"><div class="ic">🚚</div><div><b><ruby>配達<rt>はいたつ</rt></ruby></b>：おうちごとに ふくろを わけて あつめ、それぞれの おうちに とどける。</div></div>
-      <div class="box"><div class="ic">🔍</div><div>メモが かくれても「メモを <ruby>見<rt>み</rt></ruby>る」で なんかいでも <ruby>見<rt>み</rt></ruby>られる。</div></div>
+      <div class="box"><div class="ic">📥</div><div><b><ruby>棚<rt>たな</rt></ruby><ruby>入<rt>い</rt></ruby>れ</b>：だいしゃの しなものを えらんで、メモの ばんごうの たなを タップして しまう。まちがえたら、なにも えらばずに たなを タップすると もどせる。</div></div>
+      <div class="box"><div class="ic">🔍</div><div>メモが かくれても「メモを <ruby>見<rt>み</rt></ruby>る」で なんかいでも <ruby>見<rt>み</rt></ruby>られる。レベル4は スタートの メモばんに もどると <ruby>見<rt>み</rt></ruby>られる。</div></div>
     </div>
     <div class="center"><button id="helpClose" class="btn primary big">はじめる</button></div>
   </div>
@@ -213,6 +227,7 @@ ruby rt{font-size:.5em;font-weight:400;letter-spacing:0}
     <div class="scenes" id="sceneSel">
       <button class="scene" data-mode="store"><span class="em">🛒</span>おつかい<small>スーパーで かう</small></button>
       <button class="scene" data-mode="pick"><span class="em">📦</span><ruby>倉庫<rt>そうこ</rt></ruby>の しごと<small>ばんごうの たなから あつめる</small></button>
+      <button class="scene" data-mode="stock"><span class="em">📥</span><ruby>棚<rt>たな</rt></ruby><ruby>入<rt>い</rt></ruby>れ<small>ばんごうの たなに しまう</small></button>
       <button class="scene" data-mode="deliver"><span class="em">🚚</span><ruby>配達<rt>はいたつ</rt></ruby><small>おうちごとに わけて とどける</small></button>
     </div>
     <h2>むずかしさ</h2>
@@ -233,8 +248,9 @@ ruby rt{font-size:.5em;font-weight:400;letter-spacing:0}
         <button data-v="level">レベルに あわせる</button>
         <button data-v="show">いつも <ruby>見<rt>み</rt></ruby>える</button>
         <button data-v="hide">しばらくすると かくす</button>
+        <button data-v="return">スタートに もどって <ruby>見<rt>み</rt></ruby>る</button>
       </div>
-      <div class="setnote">レベルに あわせる：レベル1・2は いつも <ruby>見<rt>み</rt></ruby>える、レベル3は しばらくすると かくれる。<br>どの <ruby>設定<rt>せってい</rt></ruby>でも、メモの「かくす」「メモを <ruby>見<rt>み</rt></ruby>る」で じぶんで きりかえられる。</div>
+      <div class="setnote">レベルに あわせる：レベル1・2は いつも <ruby>見<rt>み</rt></ruby>える、レベル3は しばらくすると かくれる、レベル4は スタートの メモばんに もどって <ruby>見<rt>み</rt></ruby>る。<br>「いつも <ruby>見<rt>み</rt></ruby>える」「しばらくすると かくす」のときは、メモの「かくす」「メモを <ruby>見<rt>み</rt></ruby>る」で じぶんで きりかえられる。</div>
     </div>
     <div class="setrow"><div class="lab">けんぴんの ヒント</div>
       <div class="seg" data-key="hint">
@@ -248,7 +264,7 @@ ruby rt{font-size:.5em;font-weight:400;letter-spacing:0}
         <button data-v="walk">あるく</button>
         <button data-v="face">たなを <ruby>正面<rt>しょうめん</rt></ruby>から <ruby>見<rt>み</rt></ruby>る</button>
       </div>
-      <div class="setnote">レベルに あわせる：レベル1は <ruby>正面<rt>しょうめん</rt></ruby>から <ruby>見<rt>み</rt></ruby>る、レベル2・3は あるく。<br><ruby>正面<rt>しょうめん</rt></ruby>から <ruby>見<rt>み</rt></ruby>る：したの ボタンで たなを えらぶ。あるかなくて よいので、さがす てまが へる。</div>
+      <div class="setnote">レベルに あわせる：レベル1は <ruby>正面<rt>しょうめん</rt></ruby>から <ruby>見<rt>み</rt></ruby>る、レベル2〜4は あるく。<br><ruby>正面<rt>しょうめん</rt></ruby>から <ruby>見<rt>み</rt></ruby>る：したの ボタンで たなを えらぶ。あるかなくて よいので、さがす てまが へる。</div>
     </div>
     <div class="center"><button id="setClose" class="btn primary big">とじる</button></div>
   </div>
@@ -302,7 +318,7 @@ import * as THREE from 'three';
    ===================================================================== */
 /*CFG_START*/
 const CFG = {
-  version: 'v2026-10-10',
+  version: 'v2026-10-10b',
   // あるく
   walkSpeed: 3.0,        // m/秒
   turnSpeed: 1.0,        // ジョイスティック左右での回転（rad/秒）
@@ -327,17 +343,24 @@ const CFG = {
   // 正面モード
   stationTween: 0.45,    // 棚の切りかえにかける時間（秒）
   memoHideSec: 15,       // 「しばらくすると かくす」までの秒数
+  memoRadius: 2.2,       // メモばんの前で「メモを 見る」が出る距離（m）
+  cartCap: 8,            // 棚入れで、1つの棚に置ける数
+  scenes: ['store', 'pick', 'stock'],   // メニューに出す場面（'deliver' を足すと配達も出ます）
   // むずかしさ（shelves: 棚の台数。null なら全部の商品をならべる）
+  //   memo: 'show'＝いつも見える／'hide'＝しばらくすると かくれる／'return'＝スタートのメモばんに もどって見る
+  //   memoIcons:false＝メモを文字だけに／codeOnly:true＝倉庫・棚入れの札を番号だけに／boxed:true＝倉庫の棚の品物を同じ箱に
   levels: {
     1: { types: [2, 3], qty: [1, 2], variants: [],               memo: 'show', view: 'face', shelves: 2 },
     2: { types: [3, 4], qty: [1, 3], variants: ['size'],         memo: 'show', view: 'walk', shelves: null },
-    3: { types: [4, 5], qty: [1, 5], variants: ['size', 'color'], memo: 'hide', view: 'walk', shelves: null },
+    3: { types: [3, 4], qty: [1, 5], variants: ['size', 'color'], memo: 'hide', view: 'walk', shelves: null },
+    4: { types: [4, 5], qty: [1, 5], variants: ['size', 'color'], memo: 'return', view: 'walk', shelves: null, memoIcons: false, codeOnly: true, boxed: true },
   },
   // 配達：届け先の数と、1けんあたりの種類
   delivery: {
     1: { houses: 3, types: [1, 2] },
     2: { houses: 3, types: [2, 2] },
     3: { houses: 4, types: [2, 3] },
+    4: { houses: 4, types: [3, 3] },   // 配達はいまメニューに出していません（CFG.scenes）
   },
 };
 /*CFG_END*/
@@ -432,7 +455,7 @@ function shuffle(rng, arr) {
   for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
   return arr;
 }
-function catalogFor(mode) { return mode === 'pick' ? CATALOG.parts : CATALOG.food; }
+function catalogFor(mode) { return (mode === 'pick' || mode === 'stock') ? CATALOG.parts : CATALOG.food; }
 
 function baseDef(f) {
   return { id: f.id, name: f.name, counter: f.counter, shape: f.shape, color: f.color, scale: 1, family: f.id, variantKind: null };
@@ -519,6 +542,22 @@ function inspectBag(lines, contents) {
   }
   return { ok: diffs.length === 0 && total > 0, diffs, total };
 }
+// 棚入れの検品。lines＝しまうもの、codeOf＝{商品id: 棚ばんごう}、placed＝{棚ばんごう: {商品id: 数}}。なにも置いていなければ必ず不合格。
+function inspectStock(lines, codeOf, placed) {
+  const need = {};
+  for (const l of lines) { const c = codeOf[l.id]; need[c] = need[c] || {}; need[c][l.id] = (need[c][l.id] || 0) + l.qty; }
+  const codes = new Set([...Object.keys(need), ...Object.keys(placed).filter(c => Object.values(placed[c]).some(n => n > 0))]);
+  const diffs = []; let total = 0;
+  for (const c in placed) for (const id in placed[c]) total += Math.max(0, placed[c][id]);
+  for (const c of [...codes].sort()) {
+    const ids = new Set([...Object.keys(need[c] || {}), ...Object.keys(placed[c] || {}).filter(id => placed[c][id] > 0)]);
+    for (const id of ids) {
+      const n = (need[c] || {})[id] || 0, h = (placed[c] || {})[id] || 0;
+      if (n !== h) diffs.push({ code: c, id, need: n, have: h });
+    }
+  }
+  return { ok: diffs.length === 0 && total > 0, diffs, total };
+}
 // 数え方（1ぽん・2ほん・3ぼん など）
 function counterText(counter, n) {
   if (counter === 'ほん') {
@@ -539,7 +578,7 @@ const $ = s => document.querySelector(s);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const ITEMS = allItemDefs();
 const R = (k, y) => `<ruby>${k}<rt>${y}</rt></ruby>`;
-const MODE_NAME = { store: 'おつかい', pick: `${R('倉庫', 'そうこ')}の しごと`, deliver: R('配達', 'はいたつ') };
+const MODE_NAME = { store: 'おつかい', pick: `${R('倉庫', 'そうこ')}の しごと`, stock: `${R('棚', 'たな')}${R('入', 'い')}れ`, deliver: R('配達', 'はいたつ') };
 const GOAL_WORD = { store: 'レジで わたす', pick: 'しゅっかする', deliver: '' };
 
 $('#version').textContent = CFG.version;
@@ -709,6 +748,7 @@ const SHAPES = {
   hammer: c => [P(U.cyl, 0x9c6b3c, .013, .24, .013, 0, .03, 0, 0, 0, HZ), P(U.box, c, .04, .12, .04, .12, .06, 0, 0, 0, 0, MET)],
 };
 
+const BOX_DEF = { id: '__box', name: 'はこ', shape: 'box', color: 0xc8a26b, scale: 1 }; // 倉庫レベル4：みんな同じ箱
 const PROTO = {};
 function itemProto(def) {
   if (PROTO[def.id]) return PROTO[def.id];
@@ -826,7 +866,7 @@ function newWorld() {
     scene.remove(world.group);
     for (const d of world.disposables) d.dispose();
   }
-  world = { group: new THREE.Group(), units: [], slots: [], hits: [], obstacles: [], goals: [], stations: [], disposables: [], rings: [], start: null };
+  world = { group: new THREE.Group(), units: [], slots: [], hits: [], obstacles: [], goals: [], stations: [], disposables: [], rings: [], start: null, memoSpot: null };
   scene.add(world.group);
 }
 function add(o) { world.group.add(o); return o; }
@@ -885,34 +925,41 @@ function buildUnit(u, styleKey, x, z, ui) {
   const sign = textSign(styleKey === 'store' ? 0.9 : 0.5, 0.42, signText, { bg: st.signBg }); sign.position.set(0, 1.8, 0); g.add(sign);
   g.add(P(U.box, 0x666666, .03, .3, .03, 0, 1.6, -.05));
   const unit = { x, z, ui, slots: [], letter: u.letter, num: u.num };
+  const Lv = CFG.levels[S.level], stockMode = S.mode === 'stock';
+  const codeOnly = !!Lv.codeOnly && styleKey === 'rack', boxed = !!Lv.boxed && S.mode === 'pick';
   u.slots.forEach((s, si) => {
     const col = si % 2, tier = si < 2 ? 1 : 0;
     const by = [0.12, 0.78][tier], sx = (col - 0.5) * 0.84;
-    const slot = { code: s.code, itemId: s.itemId, unit: ui, wx: x + sx, wy: by + 0.3, wz: z, cluster: null, bounce: 0 };
-    if (s.itemId) {
-      const def = ITEMS[s.itemId];
-      const cl = makeCluster(def); cl.position.set(sx, by + 0.02, 0.03); g.add(cl); slot.cluster = cl;
-      // 値札・ばんごう札
+    const slot = { code: s.code, itemId: s.itemId, unit: ui, wx: x + sx, wy: by + 0.3, wz: z, cluster: null, bounce: 0, g, sx, by, stack: [] };
+    const def = s.itemId ? ITEMS[s.itemId] : null;
+    // 棚入れでは棚はからっぽ（itemId は「ここに置くのが正しい品物」）
+    if (def && !stockMode) { const cl = makeCluster(boxed ? BOX_DEF : def); cl.position.set(sx, by + 0.02, 0.03); g.add(cl); slot.cluster = cl; }
+    // 札：おつかい＝名前／倉庫・棚入れ＝ばんごう＋名前（レベル4は ばんごうだけ）
+    let kind = null;
+    if (styleKey === 'store') kind = def ? 'name' : null;
+    else if (codeOnly) kind = 'code';
+    else kind = def ? 'codename' : 'empty';
+    if (kind) {
       const tex = canvasTex(400, 56, (ctx, w, h) => {
-        if (st.label === 'name') {
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        if (kind === 'name') {
           ctx.fillStyle = '#ffffff'; rr(ctx, 0, 0, w, h, 10); ctx.fill();
           ctx.strokeStyle = '#d0c8b6'; ctx.lineWidth = 3; ctx.stroke();
-          ctx.fillStyle = '#1f2a37'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillStyle = '#1f2a37';
           const fs = fitFont(ctx, def.name, w * 0.92, 38); ctx.font = `700 ${fs}px ${FONT}`; ctx.fillText(def.name, w / 2, h / 2 + 2);
-        } else {
+        } else if (kind === 'codename') {
           ctx.fillStyle = '#ffd84d'; rr(ctx, 0, 0, w, h, 8); ctx.fill();
           ctx.fillStyle = '#1f2a37'; ctx.fillRect(0, 0, 132, h);
-          ctx.fillStyle = '#ffd84d'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.font = `700 40px ${FONT}`; ctx.fillText(s.code, 66, h / 2 + 2);
+          ctx.fillStyle = '#ffd84d'; ctx.font = `700 40px ${FONT}`; ctx.fillText(s.code, 66, h / 2 + 2);
           ctx.fillStyle = '#1f2a37';
           const fs = fitFont(ctx, def.name, w - 150, 32); ctx.font = `700 ${fs}px ${FONT}`; ctx.fillText(def.name, 132 + (w - 132) / 2, h / 2 + 2);
+        } else if (kind === 'code') {
+          ctx.fillStyle = '#ffd84d'; rr(ctx, 0, 0, w, h, 8); ctx.fill();
+          ctx.fillStyle = '#1f2a37'; ctx.font = `700 46px ${FONT}`; ctx.fillText(s.code, w / 2, h / 2 + 2);
+        } else {
+          ctx.fillStyle = '#d7d7d7'; rr(ctx, 0, 0, w, h, 8); ctx.fill();
+          ctx.fillStyle = '#555'; ctx.font = `700 38px ${FONT}`; ctx.fillText(s.code + (stockMode ? '  （あき）' : '  （から）'), w / 2, h / 2 + 2);
         }
-      });
-      const lab = planeMesh(0.76, 0.112, tex); lab.position.set(sx, by - 0.025, D / 2 + .006); g.add(lab);
-    } else if (st.label === 'code') {
-      const tex = canvasTex(400, 56, (ctx, w, h) => {
-        ctx.fillStyle = '#d7d7d7'; rr(ctx, 0, 0, w, h, 8); ctx.fill();
-        ctx.fillStyle = '#555'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `700 38px ${FONT}`; ctx.fillText(s.code + '  （から）', w / 2, h / 2 + 2);
       });
       const lab = planeMesh(0.76, 0.112, tex); lab.position.set(sx, by - 0.025, D / 2 + .006); g.add(lab);
     }
@@ -975,7 +1022,7 @@ function buildStore(layout) {
   world.start = { x: -3.6, z: 6.4, yaw: -0.3 };
 }
 
-function buildWarehouse(layout) {
+function buildWarehouse(layout, mode = 'pick') {
   const rows = Math.ceil(layout.units.length / CFG.unitsPerRow);
   const backZ = -(rows - 1) * CFG.rowGap - 4.0, frontZ = 8, hw = 8;
   scene.background.set(0xdfe3e8); scene.fog = null;
@@ -997,14 +1044,26 @@ function buildWarehouse(layout) {
   for (let i = 0; i < 8; i++) add(P(U.cyl, 0xc0c6cc, .04, 1.0, .04, dx - 1.1 + i * .31, .82, dz, HZ, 0, 0, MET));
   add(P(U.box, 0xc8a26b, .5, .4, .4, dx + .7, 1.05, dz));
   person(dx - 1.6, dz + 1.2, Math.PI * 0.85, 0x1d6fd8);
-  const sign = textSign(2.4, .62, 'しゅっかぐち', { bg: '#1d6fd8' }); sign.position.set(dx, 2.4, dz - .3); sign.rotation.y = Math.PI; add(sign);
+  const sign = textSign(2.4, .62, mode === 'stock' ? 'にゅうかぐち' : 'しゅっかぐち', { bg: '#1d6fd8' }); sign.position.set(dx, 2.4, dz - .3); sign.rotation.y = Math.PI; add(sign);
   add(P(U.box, 0x666666, .04, 1.4, .04, dx, 3.2, dz - .3));
   // パレットの荷物（かざり）
   for (const [px, pz] of [[6.6, 6.6], [6.6, -2.0]]) { solid(1.2, .15, 1.0, 0xb08050, px, .075, pz); add(P(U.box, 0xc8a26b, 1.0, .6, .8, px, .45, pz)); }
-  const gx = dx, gz = dz - 1.6;
-  world.goals.push({ bag: 0, x: gx, z: gz, label: GOAL_WORD.pick, ...goalRing(gx, gz, 0x1d6fd8) });
-  world.stations.push({ kind: 'goal', goal: 0, label: 'しゅっかぐち', look: [dx, 1.45, dz], n: [0, -1], fitW: 3.6, fitH: 3.6, camY: 1.6 });
-  world.start = { x: 4.5, z: 6.3, yaw: 0 };
+  if (mode === 'pick') {
+    const gx = dx, gz = dz - 1.6;
+    world.goals.push({ bag: 0, x: gx, z: gz, label: GOAL_WORD.pick, ...goalRing(gx, gz, 0x1d6fd8) });
+    world.stations.push({ kind: 'goal', goal: 0, label: 'しゅっかぐち', look: [dx, 1.45, dz], n: [0, -1], fitW: 3.6, fitH: 3.6, camY: 1.6 });
+    world.start = { x: 4.5, z: 6.3, yaw: 0 };
+  } else {
+    // 棚入れ：入荷口のそばから出発。しまう荷物をのせた台車（かざり）
+    world.start = { x: -2.6, z: 6.3, yaw: 0 };
+    const cx = -0.9, cz = 6.5;
+    add(P(U.box, 0x6b7785, 1.1, .07, .7, cx, .24, cz));
+    for (const [wx, wz] of [[-.45, -.28], [.45, -.28], [-.45, .28], [.45, .28]]) add(P(U.cyl, 0x222222, .07, .05, .07, cx + wx, .08, cz + wz, HZ, 0, 0));
+    for (const wx of [-.5, .5]) add(P(U.cyl, 0x9aa5b1, .018, .8, .018, cx + wx, .62, cz - .3));
+    add(P(U.cyl, 0x9aa5b1, .018, 1.0, .018, cx, 1.0, cz - .3, 0, 0, HZ));
+    add(P(U.box, 0xc8a26b, .4, .3, .4, cx - .25, .43, cz + .05)); add(P(U.box, 0xe0b46a, .35, .22, .35, cx + .22, .39, cz + .1)); add(P(U.box, 0xa07a45, .3, .2, .3, cx - .22, .68, cz + .05, 0, .3, 0));
+    world.obstacles.push({ x0: cx - .6, x1: cx + .6, z0: cz - .4, z1: cz + .4 });
+  }
 }
 
 function house(info, hx, hz) {
@@ -1092,9 +1151,27 @@ function buildTown(layout, order) {
 function buildWorld(mode, layout, order) {
   newWorld();
   if (mode === 'store') buildStore(layout);
-  else if (mode === 'pick') buildWarehouse(layout);
+  else if (mode === 'pick' || mode === 'stock') buildWarehouse(layout, mode);
   else buildTown(layout, order);
+  if (memoMode() === 'return') addMemoBoard();
   world.group.updateMatrixWorld(true);
+}
+// スタート地点のメモばん（メモが「スタートに もどって 見る」のときだけ）
+function addMemoBoard() {
+  const st = world.start, bx = st.x - 1.7, bz = st.z;
+  const g = new THREE.Group(); g.position.set(bx, 0, bz); g.rotation.y = Math.PI; add(g); // 売り場がわ（-z）を向ける
+  g.add(P(U.cyl, 0x666666, .035, 1.5, .035, -.46, .75, -.06), P(U.cyl, 0x666666, .035, 1.5, .035, .46, .75, -.06)); // 支柱はボードの後ろ
+  g.add(P(U.box, 0xe0a400, 1.14, .84, .05, 0, 1.45, 0));
+  const tex = canvasTex(512, 384, (ctx, w, h) => {
+    ctx.fillStyle = '#fff7d6'; rr(ctx, 0, 0, w, h, 28); ctx.fill();
+    ctx.fillStyle = '#1f2a37'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `700 150px ${FONT}`; ctx.fillText('メモ', w / 2, h * 0.43);
+    ctx.font = `700 46px ${FONT}`; ctx.fillText('ここで みられるよ', w / 2, h * 0.8);
+  });
+  const face = planeMesh(1.06, .795, tex); face.position.set(0, 1.45, .03); g.add(face);
+  world.obstacles.push({ x0: bx - .55, x1: bx + .55, z0: bz - .15, z1: bz + .15 });
+  world.memoSpot = { x: st.x, z: st.z, bx, bz, ...goalRing(st.x, st.z, 0xe0a400) };
+  world.stations.push({ kind: 'memo', label: 'メモ', look: [bx, 1.4, bz], n: [0, -1], fitW: 2.4, fitH: 2.4, camY: 1.5 });
 }
 
 /* =====================================================================
@@ -1107,7 +1184,7 @@ const S = {
   paused: true, frames: 0, elapsed: 0,
   seed: 0, order: null, layout: null, codeOf: {},
   bags: [], activeBag: 0,
-  memoViews: 0, inspections: 0, memoHidden: false, memoHideAt: null,
+  memoViews: 0, inspections: 0, memoHidden: false, memoHideAt: null, held: null,
   player: { x: 0, z: 0, yaw: 0, pitch: CFG.pitchDefault },
   cam: { x: 0, y: CFG.eyeHeight, z: 0, yaw: 0, pitch: 0 },
   station: 0, tween: null,
@@ -1132,6 +1209,8 @@ function startRound(mode = S.mode, level = S.level, seed) {
   for (const u of S.layout.units) for (const s of u.slots) if (s.itemId) S.codeOf[s.itemId] = s.code;
   buildWorld(mode, S.layout, S.order);
   S.bags = S.order.bags.map(() => ({ contents: {}, attempts: 0, done: false }));
+  S.held = null;
+  if (mode === 'stock') for (const l of S.order.bags[0].lines) S.bags[0].contents[l.id] = (S.bags[0].contents[l.id] || 0) + l.qty; // 台車に しまうものが のっている
   S.activeBag = 0; S.memoViews = 0; S.inspections = 0; S.elapsed = 0;
   S.memoHidden = false; S.memoHideAt = null;
   const st = world.start;
@@ -1139,6 +1218,7 @@ function startRound(mode = S.mode, level = S.level, seed) {
   S.phase = 'play';
   $('#hud').classList.remove('hidden'); $('#menuBtn').classList.remove('hidden');
   applyView(true);
+  lastGoalKey = '#'; lastMemoKey = '#';
   renderBag(); renderMemoPanel(); updateAction();
   openMemo(true);
 }
@@ -1147,7 +1227,7 @@ function applyView(instant) {
   const face = viewMode() === 'face';
   $('#joy').classList.toggle('hidden', face);
   $('#stationBar').classList.toggle('hidden', !face);
-  $('#actionBtn').classList.toggle('raise', face);
+  $('#actionBtn').classList.toggle('raise', face); $('#memoBtn').classList.toggle('raise', face);
   if (face) { renderStations(); goToStation(S.station = 0, instant); }
   else { S.tween = null; syncCamFromPlayer(); }
 }
@@ -1156,7 +1236,8 @@ function applyView(instant) {
 function lineHTML(l) {
   const d = ITEMS[l.id];
   const code = S.mode === 'store' ? '' : `<span class="code">${S.codeOf[l.id]}</span>`;
-  return `<div class="mline"><img src="${THUMB[l.id] || ''}" alt=""><div class="mt">${code}<span class="nm">${d.name}</span></div><div class="q">${l.qty}<small>${counterText(d.counter, l.qty)}</small></div></div>`;
+  const icon = CFG.levels[S.level].memoIcons === false ? '' : `<img src="${THUMB[l.id] || ''}" alt="">`;
+  return `<div class="mline">${icon}<div class="mt">${code}<span class="nm">${d.name}</span></div><div class="q">${l.qty}<small>${counterText(d.counter, l.qty)}</small></div></div>`;
 }
 function memoHTML() {
   if (S.mode !== 'deliver') return S.order.bags[0].lines.map(lineHTML).join('');
@@ -1165,11 +1246,14 @@ function memoHTML() {
     return `<div class="mhouse${S.bags[i].done ? ' done' : ''}" style="border-left:6px solid ${h.css}">${markSVG(h.mark, h.css)}${h.name}${S.bags[i].done ? '<span class="ck">✓ わたした</span>' : ''}</div>` + b.lines.map(lineHTML).join('');
   }).join('');
 }
-function memoTitle() { return S.mode === 'store' ? 'かいもの メモ' : S.mode === 'pick' ? 'でんぴょう（あつめる もの）' : `${R('配達', 'はいたつ')} メモ`; }
+function memoTitle() { return S.mode === 'store' ? 'かいもの メモ' : S.mode === 'pick' ? 'でんぴょう（あつめる もの）' : S.mode === 'stock' ? 'でんぴょう（しまう もの）' : `${R('配達', 'はいたつ')} メモ`; }
 function renderMemoPanel() {
   const el = $('#memoPanel');
   const head = `<div class="ptitle"><span>${MODE_NAME[S.mode]}・レベル${S.level}</span></div>`;
-  if (S.memoHidden) {
+  if (S.memoHidden && memoMode() === 'return') {
+    const where = viewMode() === 'face' ? 'したの「メモ」ボタンで メモばんへ いこう' : 'スタートの メモばんに もどると 見られるよ';
+    el.innerHTML = head + `<div id="memoHiddenBox"><div class="memoGo">📝 メモは かくれているよ<small>${where}</small></div><div class="note">${R('見', 'み')}た かいすう：${S.memoViews}かい</div></div>`;
+  } else if (S.memoHidden) {
     el.innerHTML = head + `<div id="memoHiddenBox"><button class="btn primary" data-act="memo" style="font-size:20px;min-height:56px">📝 メモを ${R('見', 'み')}る</button><div class="note">${R('見', 'み')}た かいすう：${S.memoViews}かい</div></div>`;
   } else {
     el.innerHTML = head.replace('</div>', `<button class="btn memoToggle" data-act="hideMemo">かくす</button></div>`) +
@@ -1205,8 +1289,10 @@ function openMemo(atStart) {
     let t = '';
     if (S.mode === 'store') t = 'スーパーで かって、<b>レジ</b>で わたそう。';
     else if (S.mode === 'pick') t = '<b>ばんごう</b>の たなから あつめて、<b>しゅっかぐち</b>で わたそう。';
+    else if (S.mode === 'stock') t = 'だいしゃの しなものを えらんで、<b>ばんごう</b>の たなを タップして しまおう。ぜんぶ しまったら「けんぴん」。';
     else t = 'みぎうえの ふくろを えらんでから あつめよう。おうちごとに ふくろを わけて とどけよう。';
     if (hide) t += `<br>メモは ${CFG.memoHideSec}びょう たつと かくれるよ。「メモを ${R('見', 'み')}る」で また ${R('見', 'み')}られる。`;
+    if (memoMode() === 'return') t += `<br><b>このメモは かくれるよ。</b>スタートの <b>メモばん</b>に もどると また ${R('見', 'み')}られる。おぼえてから しゅっぱつ！`;
     note.innerHTML = t;
     $('#memoClose').textContent = 'しゅっぱつ！';
   } else {
@@ -1219,12 +1305,13 @@ function openMemo(atStart) {
 function closeMemo() {
   const atStart = $('#memoModal').dataset.start === '1';
   hideOv('#memoModal');
-  if (atStart) showMemo(false);
+  if (atStart) { if (memoMode() === 'return') hideMemo(); else showMemo(false); }
 }
 
 // ---------- かご ----------
 function bagTotal(i) { let t = 0; const c = S.bags[i].contents; for (const k in c) t += c[k]; return t; }
 function renderBag() {
+  if (S.mode === 'stock') return renderCart();
   const deliver = S.mode === 'deliver';
   const tabs = $('#bagTabs');
   if (deliver) {
@@ -1262,6 +1349,62 @@ function removeItem(id) {
   b.contents[id]--; if (b.contents[id] <= 0) delete b.contents[id];
   SND.put(); renderBag(); return true;
 }
+// ---- 棚入れ：台車（右上）から しなものを えらび、たなを タップして しまう ----
+function renderCart() {
+  $('#bagTabs').classList.add('hidden'); $('#bagTabs').innerHTML = '';
+  const b = S.bags[0], left = bagTotal(0);
+  $('#bagHead').innerHTML = `🛒 <span>だいしゃ</span><span class="cnt">のこり ${left}こ</span>`;
+  const list = $('#bagList');
+  if (b.done) { list.innerHTML = `<div class="empty">✓ ぜんぶ しまったよ</div>`; return; }
+  const ids = Object.keys(b.contents).filter(k => b.contents[k] > 0);
+  if (S.held && !b.contents[S.held]) S.held = null;
+  if (!ids.length) { list.innerHTML = `<div class="empty">ぜんぶ はこんだ！<br>したの「けんぴん」を おそう。</div>`; return; }
+  const note = S.held ? `<div class="holdnote">「${ITEMS[S.held].name}」を もっている。<br>しまう たなを タップ。</div>` : `<div class="holdnote">しなものを えらんで、<br>しまう たなを タップ。</div>`;
+  list.innerHTML = note + ids.map(id => {
+    const d = ITEMS[id], n = b.contents[id];
+    return `<div class="brow pickrow${S.held === id ? ' sel' : ''}" data-act="hold" data-id="${id}"><img src="${THUMB[id] || ''}" alt=""><span class="nm">${d.name}</span><span class="n">${n}<small>${counterText(d.counter, n)}</small></span></div>`;
+  }).join('');
+}
+function holdItem(id) {
+  const b = S.bags[0];
+  if (!b || b.done || !b.contents[id]) return false;
+  S.held = S.held === id ? null : id; SND.tap(); renderCart(); return true;
+}
+function renderSlot(slot) {
+  if (slot.cluster) { slot.g.remove(slot.cluster); slot.cluster = null; }
+  const n = slot.stack.length; if (!n) return;
+  const ids = slot.stack.slice().sort();
+  const grp = new THREE.Group();
+  const sc = n <= 2 ? 1.3 : n === 3 ? 1.05 : 0.85;
+  const rows = n >= 4 ? 2 : 1, cols = Math.ceil(n / rows), sp = Math.min(0.3, 0.7 / cols);
+  ids.forEach((id, i) => {
+    const o = itemProto(ITEMS[id]).obj.clone(); o.scale.setScalar(sc);
+    const col = rows === 2 ? Math.floor(i / 2) : i, row = rows === 2 ? i % 2 : 0;
+    o.position.set((col - (cols - 1) / 2) * sp, 0, rows === 2 ? (row ? -0.11 : 0.09) : 0);
+    o.rotation.y = ((i % 3) - 1) * 0.15; grp.add(o);
+  });
+  grp.position.set(slot.sx, slot.by + 0.02, 0.03); slot.g.add(grp); slot.cluster = grp;
+}
+function tryStock(slot, force = false) {
+  const b = S.bags[0];
+  if (!b || b.done) return false;
+  if (viewMode() === 'walk' && !force) {
+    const d = Math.hypot(S.player.x - slot.wx, S.player.z - slot.wz);
+    if (d > CFG.reach) { toast('もっと ちかづいてね'); SND.far(); return false; }
+  }
+  if (S.held) {
+    const id = S.held;
+    if (!b.contents[id]) { S.held = null; renderCart(); return false; }
+    if (slot.stack.length >= CFG.cartCap) { toast('この たなは いっぱいだよ'); SND.far(); return false; }
+    b.contents[id]--; if (b.contents[id] <= 0) { delete b.contents[id]; S.held = null; }
+    slot.stack.push(id); renderSlot(slot); slot.bounce = 0.25; SND.put(); renderCart(); return true;
+  }
+  if (slot.stack.length) { // えらんでいないときに おいてある たなを タップ → ひとつ とりだす
+    const id = slot.stack.pop(); b.contents[id] = (b.contents[id] || 0) + 1; S.held = id;
+    renderSlot(slot); SND.pick(); toast(`${ITEMS[id].name}を とりだしたよ`); renderCart(); return true;
+  }
+  toast('しなものを えらんでから、たなを タップしてね'); SND.far(); return false;
+}
 function setActiveBag(i) {
   if (i < 0 || i >= S.bags.length) return;
   S.activeBag = i; SND.tap(); renderBag();
@@ -1280,6 +1423,7 @@ function flyIcon(id, [x, y]) {
 function inspect(bi) {
   const b = S.bags[bi];
   if (!b || b.done) return null;
+  if (S.mode === 'stock') return inspectStockUI();
   if (S.mode === 'deliver' && S.activeBag !== bi) { setActiveBag(bi); }
   if (bagTotal(bi) === 0) {
     showResult({ kind: 'empty', bi });
@@ -1302,29 +1446,49 @@ function inspect(bi) {
   }
   return { ok: res.ok, diffs: res.diffs, attempts: b.attempts };
 }
+function inspectStockUI() {
+  const b = S.bags[0];
+  if (bagTotal(0) > 0) { showResult({ kind: 'cartLeft', bi: 0 }); return { ok: false, cartLeft: true }; }
+  const placed = {};
+  for (const sl of world.slots) if (sl.stack.length) { placed[sl.code] = {}; for (const id of sl.stack) placed[sl.code][id] = (placed[sl.code][id] || 0) + 1; }
+  S.inspections++;
+  const res = inspectStock(S.order.bags[0].lines, S.codeOf, placed);
+  if (res.ok) {
+    b.done = true; SND.ok(); renderCart(); renderMemoPanel();
+    showResult({ kind: 'ok', bi: 0, left: 0 });
+  } else {
+    b.attempts++; SND.ng();
+    const vague = S.settings.hint === 'vague' && b.attempts === 1;
+    showResult({ kind: vague ? 'vague' : 'detail', bi: 0, diffs: res.diffs });
+  }
+  return { ok: res.ok, diffs: res.diffs, attempts: b.attempts };
+}
 function showResult(r) {
   const card = $('#resultCard');
   const who = S.mode === 'deliver' ? HOUSES[r.bi].name : '';
   let h = '';
-  if (r.kind === 'empty') {
+  if (r.kind === 'cartLeft') {
+    h = `<div class="big">🛒</div><div class="msg">まだ だいしゃに のこっているよ</div><div class="sub">ぜんぶ しまってから、けんぴん しよう。</div>`;
+  } else if (r.kind === 'empty') {
     h = `<div class="big">🧺</div><div class="msg">まだ なにも ${R('入', 'はい')}っていないよ</div><div class="sub">たなの しなものを タップして あつめよう。</div>`;
   } else if (r.kind === 'ok') {
     const allDone = r.left === 0;
     h = `<div class="big">⭕</div><div class="msg">ぴったり！</div><div class="sub">${S.mode === 'deliver' ? `${who}に わたしたよ。${allDone ? '' : `のこり ${r.left}けん。`}` : ''}</div>`;
   } else if (r.kind === 'vague') {
-    h = `<div class="big">🤔</div><div class="msg">どれかが ちがいます</div><div class="sub">メモと ${S.mode === 'deliver' ? 'ふくろ' : 'かご'}を くらべてみよう。<br>しゅるいと ${R('数', 'かず')}を ひとつずつ たしかめよう。</div>`;
+    h = `<div class="big">🤔</div><div class="msg">どれかが ちがいます</div><div class="sub">${S.mode === 'stock' ? `メモと たなの ばんごうを くらべてみよう。<br>しなものと ばんごうと ${R('数', 'かず')}を ひとつずつ たしかめよう。` : `メモと ${S.mode === 'deliver' ? 'ふくろ' : 'かご'}を くらべてみよう。<br>しゅるいと ${R('数', 'かず')}を ひとつずつ たしかめよう。`}</div>`;
   } else {
     const rows = r.diffs.map(d => {
       const it = ITEMS[d.id];
+      const where = d.code ? `<span class="code">${d.code}</span> ` : '';
       let tag;
-      if (d.need === 0) tag = `<span class="tag no">たのまれていない（${d.have}${counterText(it.counter, d.have)}）</span>`;
+      if (d.need === 0) tag = d.code ? `<span class="tag no">ここに おく ものじゃない（${d.have}${counterText(it.counter, d.have)}）</span>` : `<span class="tag no">たのまれていない（${d.have}${counterText(it.counter, d.have)}）</span>`;
       else if (d.have < d.need) { const k = d.need - d.have; tag = `<span class="tag less">あと ${k}${counterText(it.counter, k)} たりない</span>`; }
       else { const k = d.have - d.need; tag = `<span class="tag more">${k}${counterText(it.counter, k)} おおい</span>`; }
-      return `<div class="dline"><img src="${THUMB[d.id] || ''}" alt="">${it.name}${tag}</div>`;
+      return `<div class="dline"><img src="${THUMB[d.id] || ''}" alt="">${where}${it.name}${tag}</div>`;
     }).join('');
     h = `<div class="big">🔍</div><div class="msg">ここが ちがうよ</div><div class="dlist">${rows}</div>`;
   }
-  const btn = r.kind === 'ok' ? 'OK' : 'もういちど さがす';
+  const btn = r.kind === 'ok' ? 'OK' : r.kind === 'cartLeft' ? 'とじる' : S.mode === 'stock' ? 'もういちど たしかめる' : 'もういちど さがす';
   h += `<div class="menuBtns"><button class="btn primary big" data-act="resClose">${btn}</button></div>`;
   card.innerHTML = h;
   card.dataset.kind = r.kind;
@@ -1356,6 +1520,7 @@ function confetti() {
 // ---------- 「わたす」ボタン ----------
 function currentGoal() {
   if (S.phase !== 'play') return null;
+  if (S.mode === 'stock') return !S.bags[0].done && bagTotal(0) === 0 ? { bag: 0, label: 'けんぴん' } : null; // 台車がからになったら出る
   if (viewMode() === 'face') {
     const st = world.stations[S.station];
     if (st && st.kind === 'goal') { const g = world.goals[st.goal]; if (!S.bags[g.bag].done) return g; }
@@ -1367,15 +1532,28 @@ function currentGoal() {
   }
   return null;
 }
+function nearMemoSpot() {
+  if (S.phase !== 'play' || !world || !world.memoSpot || memoMode() !== 'return') return false;
+  if (viewMode() === 'face') { const st = world.stations[S.station]; return !!st && st.kind === 'memo'; }
+  return Math.hypot(S.player.x - world.memoSpot.x, S.player.z - world.memoSpot.z) < CFG.memoRadius;
+}
+let lastMemoKey = '';
+function updateMemoBtn() {
+  const on = nearMemoSpot(), key = on ? 'm' : '';
+  if (key === lastMemoKey) return;
+  lastMemoKey = key; $('#memoBtn').classList.toggle('hidden', !on);
+}
+function viewMemoAtBoard() { S.memoViews++; SND.tap(); openMemo(false); }
 let lastGoalKey = '';
 function updateAction() {
+  updateMemoBtn();
   const g = currentGoal();
   const btn = $('#actionBtn');
   const key = g ? 'g' + g.bag : '';
   if (key === lastGoalKey) return;
   lastGoalKey = key;
   if (!g) { btn.classList.add('hidden'); return; }
-  btn.innerHTML = S.mode === 'deliver' ? `${markSVG(HOUSES[g.bag].mark, '#fff', 26)} ${g.label}` : (S.mode === 'store' ? '🧺 レジで わたす' : '📦 しゅっかする');
+  btn.innerHTML = S.mode === 'deliver' ? `${markSVG(HOUSES[g.bag].mark, '#fff', 26)} ${g.label}` : (S.mode === 'store' ? '🧺 レジで わたす' : S.mode === 'stock' ? '✅ けんぴん' : '📦 しゅっかする');
   btn.dataset.bag = g.bag;
   btn.classList.remove('hidden');
 }
@@ -1386,7 +1564,8 @@ function renderStations() {
     let inner = st.label;
     if (st.kind === 'goal' && S.mode === 'deliver') { const h = HOUSES[st.house]; inner = markSVG(h.mark, h.css, 22) + h.name; }
     else if (st.kind === 'goal') inner = (S.mode === 'store' ? '🧺 ' : '📦 ') + st.label;
-    return `<button class="st${st.kind === 'goal' ? ' goal' : ''}${i === S.station ? ' on' : ''}" data-st="${i}">${inner}</button>`;
+    else if (st.kind === 'memo') inner = '📝 ' + st.label;
+    return `<button class="st${st.kind === 'goal' ? ' goal' : st.kind === 'memo' ? ' memo' : ''}${i === S.station ? ' on' : ''}" data-st="${i}">${inner}</button>`;
   }).join('');
 }
 function stationCam(st) {
@@ -1488,6 +1667,7 @@ function handleTap(x, y) {
   const hit = ray.intersectObjects(world.hits, false)[0];
   if (!hit) return;
   const slot = hit.object.userData.slot;
+  if (S.mode === 'stock') { tryStock(slot); return; }
   if (!slot.itemId) { toast('ここには なにも ないよ'); return; }
   tryPick(slot, [x, y]);
 }
@@ -1547,7 +1727,8 @@ window.addEventListener('keyup', e => { S.keys[e.code] = false; });
 window.addEventListener('blur', () => { S.keys = {}; });
 
 onTap($('#bagPanel'), t => {
-  if (t.dataset.act === 'minus') removeItem(t.dataset.id);
+  if (t.dataset.act === 'hold') holdItem(t.dataset.id);
+  else if (t.dataset.act === 'minus') removeItem(t.dataset.id);
   else if (t.dataset.bag !== undefined) setActiveBag(+t.dataset.bag);
 });
 onTap($('#memoPanel'), t => {
@@ -1556,18 +1737,20 @@ onTap($('#memoPanel'), t => {
 });
 onTap($('#memoClose'), () => closeMemo());
 onTap($('#actionBtn'), () => { const g = currentGoal(); if (g) inspect(g.bag); });
+onTap($('#memoBtn'), () => viewMemoAtBoard());
 onTap($('#stationBar'), t => { if (t.dataset.st !== undefined) { SND.tap(); goToStation(+t.dataset.st); } });
 onTap($('#resultModal'), t => { if (t.dataset.act === 'resClose') closeResult(); });
 
 // ---------- メニュー・設定・説明 ----------
 function levelDesc(lv) {
   const L = CFG.levels[lv];
-  const mm = (L.memo === 'show' ? `メモ いつも ${R('見', 'み')}える` : 'メモ しばらくすると かくれる') +
-    (L.shelves ? `<br>たな ${L.shelves}だい・${R('正面', 'しょうめん')}から ${R('見', 'み')}る` : '');
+  const mm = (L.memo === 'show' ? `メモ いつも ${R('見', 'み')}える` : L.memo === 'hide' ? 'メモ しばらくすると かくれる' : `メモは スタートに もどって ${R('見', 'み')}る`) +
+    (L.shelves ? `<br>たな ${L.shelves}だい・${R('正面', 'しょうめん')}から ${R('見', 'み')}る` : '') +
+    (L.codeOnly ? '<br>ふだは ばんごうだけ' : '');
   const nf = [];
   if (L.variants.includes('size')) nf.push('おおきさ');
   if (L.variants.includes('color')) nf.push('いろ');
-  const sim = nf.length ? `にたもの：${nf.join('・')}ちがい` : 'にたもの なし';
+  const sim = nf.length ? `にたもの：${nf.join('・')}` : 'にたもの なし';
   if (S.mode === 'deliver') {
     const D = CFG.delivery[lv];
     return `<small>おうち ${D.houses}けん・1けん ${D.types[0]}〜${D.types[1]}しゅるい<br>${L.qty[0]}〜${L.qty[1]}こずつ・${sim}<br>${mm}</small>`;
@@ -1575,8 +1758,8 @@ function levelDesc(lv) {
   return `<small>${L.types[0]}〜${L.types[1]}しゅるい・${L.qty[0]}〜${L.qty[1]}こずつ<br>${sim}<br>${mm}</small>`;
 }
 function renderMenu() {
-  document.querySelectorAll('#sceneSel .scene').forEach(b => b.classList.toggle('on', b.dataset.mode === S.mode));
-  $('#levelSel').innerHTML = [1, 2, 3].map(lv => `<button class="lv${lv === S.level ? ' on' : ''}" data-lv="${lv}">レベル${lv}${levelDesc(lv)}</button>`).join('');
+  document.querySelectorAll('#sceneSel .scene').forEach(b => { b.classList.toggle('on', b.dataset.mode === S.mode); b.classList.toggle('hidden', !CFG.scenes.includes(b.dataset.mode)); });
+  $('#levelSel').innerHTML = [1, 2, 3, 4].map(lv => `<button class="lv${lv === S.level ? ' on' : ''}" data-lv="${lv}">レベル${lv}${levelDesc(lv)}</button>`).join('');
 }
 function renderSettings() {
   document.querySelectorAll('#settings .seg').forEach(seg => {
@@ -1638,6 +1821,8 @@ window.__game = {
         bags: S.bags.map(b => ({ contents: { ...b.contents }, attempts: b.attempts, done: b.done })), activeBag: S.activeBag,
         player: { ...S.player }, cam: { ...S.cam }, station: S.station, memoHidden: S.memoHidden, memoViews: S.memoViews,
         inspections: S.inspections, open: [...OPEN], goal: currentGoal()?.bag ?? null,
+        held: S.held, memoNear: nearMemoSpot(), memoSpot: world && world.memoSpot ? { x: world.memoSpot.x, z: world.memoSpot.z } : null,
+        shelves: world ? world.slots.filter(sl => sl.stack.length).map(sl => ({ code: sl.code, stack: [...sl.stack] })) : [],
       };
     },
     setSettings(o) { Object.assign(S.settings, o); },
@@ -1648,6 +1833,9 @@ window.__game = {
     // force=true で距離の判定をとばす（false にすると、あるくモードの「ちかづいてね」も確かめられる）
     pick(idOrCode, force = true) { const s = window.__game.api.slot(idOrCode); return s ? tryPick(s, null, force) : false; },
     remove: removeItem, setActiveBag, inspect,
+    // 棚入れ：hold(id) でだいしゃから えらび、place(code) で その たなに しまう（force=true で距離の判定をとばす）
+    hold(id) { return S.held === id ? true : holdItem(id); }, place(code, force = true) { const sl = window.__game.api.slot(code); return sl ? tryStock(sl, force) : false; },
+    viewMemo: viewMemoAtBoard,
     teleport(x, z, yaw = S.player.yaw) { S.player.x = x; S.player.z = z; S.player.yaw = yaw; collide(S.player); syncCamFromPlayer(); },
     setJoy(x, y) { S.joy.x = x; S.joy.y = y; },
     goToStation, goals: () => world.goals.map(g => ({ bag: g.bag, x: g.x, z: g.z })),
