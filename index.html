@@ -54,6 +54,10 @@ button{font-family:var(--font);color:var(--ink);cursor:pointer;touch-action:mani
 #toast.show{opacity:.95}
 #toast.ng{background:var(--ng)}
 #howto,#settingsOv,#confirmOv{z-index:12}
+.ov.sheet{align-items:flex-end;background:rgba(20,35,50,.12);padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+.ov.sheet .card{max-height:46%;max-width:760px}
+.bk.sel{border-color:var(--accent);background:#e3f4ee;box-shadow:0 0 0 3px var(--accent);transform:translateY(-6px)}
+#hint{bottom:calc(92px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:rgba(29,43,58,.88);color:#fff;font-size:19px;font-weight:700;padding:8px 18px;border-radius:14px;pointer-events:none;white-space:nowrap}
 #ver{position:fixed;left:6px;bottom:2px;font-size:10px;color:rgba(29,43,58,.55);z-index:20;pointer-events:none}
 
 /* 画面（オーバーレイ） */
@@ -152,6 +156,7 @@ button{font-family:var(--font);color:var(--ink);cursor:pointer;touch-action:mani
 <div id="joy" class="hud" hidden><i></i></div>
 <button id="action" class="hud btn main" data-act="action" hidden></button>
 <div id="toast" class="hud"></div>
+<div id="hint" class="hud" hidden></div>
 <div id="ver"></div>
 
 <!-- メニュー -->
@@ -185,13 +190,14 @@ import * as THREE from 'three';
 const CFG = {
   version: 'v2026-10-10',
   player: { speed: 4.6, radius: 0.45 },
-  camera: { dist: 9.5, height: 8.2, fov: 50, follow: 8, dragYaw: 0.006 },
+  camera: { dist: 6.0, height: 3.4, look: 1.6, fov: 50, follow: 6, dragYaw: 0.006 },
+  view: { margin: 0.7, minDist: 2.6 },   // たなの まえに 立ったときの カメラ
   nearDist: 1.15,            // たなや いえに「近い」とみなす距離
   tap: { movePx: 12, ms: 450 },
   grid: 0.5,                 // 自動で歩くときの道さがしのマス
   // レベル1〜5（品物の種類の数・数量・メモの見え方・検品）
   levels: [null,
-    { types:[1,2], qty:[1,1], memo:'always', inspect:false, desc:'ものすごく かんたん' },
+    { types:[1,2], qty:[1,1], memo:'always', inspect:false, desc:'まずは ここから やって みよう' },
     { types:[2,2], qty:[1,2], memo:'always', inspect:true,  desc:'メモは いつも みえる' },
     { types:[3,3], qty:[1,3], memo:'peek',   inspect:true,  desc:'メモは かくれる（ボタンで みられる）' },
     { types:[4,4], qty:[1,4], memo:'peek',   inspect:true,  desc:'メモは かくれる（ボタンで みられる）' },
@@ -306,6 +312,33 @@ const player = new THREE.Group();
   const sh = new THREE.Mesh(new THREE.CircleGeometry(0.55,24), new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.22}));
   sh.rotation.x=-Math.PI/2; sh.position.y=0.02; player.add(sh); }
 scene3.add(player);
+const playerMats=[]; player.traverse(o=>{ if(o.material&&o.material.type==='MeshLambertMaterial'){ o.material.transparent=true; playerMats.push(o.material); } });
+
+// ひと（店員さん・いえの人）
+const npcs=[];
+function makePerson({shirt='#e0473a', pants='#3b4a5c', hair='#3a2a1e', skin='#f5cfa8', apron=null, cap=null}={}){
+  const g=new THREE.Group();
+  for(const s of [-1,1]){ const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.11,0.7,10), lam(pants)); leg.position.set(0.14*s,0.35,0); g.add(leg); }
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.34,0.75,14), lam(shirt)); body.position.y=1.05; g.add(body);
+  if(apron){ const a=box(0.46,0.62,0.04,apron); a.position.set(0,0.98,0.32); g.add(a); }
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.27,16,12), lam(skin)); head.position.y=1.7; g.add(head);
+  const hr=new THREE.Mesh(new THREE.SphereGeometry(0.285,16,8,0,Math.PI*2,0,Math.PI/2), lam(cap||hair)); hr.position.set(0,1.73,-0.02); hr.rotation.x=-0.3; g.add(hr);
+  for(const s of [-1,1]){ const e=new THREE.Mesh(new THREE.SphereGeometry(0.04,8,6), lam('#222')); e.position.set(0.1*s,1.72,0.245); g.add(e); }
+  const mouth=box(0.1,0.025,0.02,'#a33'); mouth.position.set(0,1.6,0.265); g.add(mouth);
+  const arms=[];
+  for(const s of [-1,1]){ const pv=new THREE.Group(); pv.position.set(0.38*s,1.36,0);
+    const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.62,10), lam(shirt)); arm.position.y=-0.3; pv.add(arm);
+    const hand=new THREE.Mesh(new THREE.SphereGeometry(0.09,10,8), lam(skin)); hand.position.y=-0.63; pv.add(hand);
+    pv.rotation.z=0.12*s; g.add(pv); arms.push(pv); }
+  g.userData.arm=arms[1]; g.userData.t=Math.random()*6;
+  return g;
+}
+const STAFF = {
+  otsukai:{ shirt:'#ffffff', apron:'#2e9e5b', hair:'#3a2a1e' },
+  picking:{ shirt:'#2f6fd6', cap:'#f2c230', hair:'#222' },
+  delivery:{ shirt:'#3aa864', cap:'#3aa864', hair:'#6b4a2a' },
+  shelve:{ shirt:'#f08a24', cap:'#f08a24', hair:'#222' },
+};
 
 // 看板（いつもこちらを向く）
 function signTex(text, bg, fg, w=256, h=128, size=78){
@@ -323,7 +356,7 @@ function floorTex(a,b){ const cv=document.createElement('canvas'); cv.width=cv.h
 
 /* ================= 場面づくり ================= */
 let stations=[], obstacles=[], pickables=[], floorMesh=null, startPos={x:0,z:0};
-function aabb(x,z,w,d){ return { minX:x-w/2, maxX:x+w/2, minZ:z-d/2, maxZ:z+d/2 }; }
+function aabb(x,z,w,d,h=2.2){ return { minX:x-w/2, maxX:x+w/2, minZ:z-d/2, maxZ:z+d/2, h }; }
 function addStation(st, g){ g.userData.stationId=st.id; g.traverse(o=>o.userData.stationId=st.id); world.add(g); pickables.push(g); stations.push(st); obstacles.push(st.aabb); }
 
 function room(W,D,fa,fb,wall,outdoor=false){
@@ -344,18 +377,23 @@ function makeShelf(id,x,z,w,items,label,labelOpt){
   for(const y of [0.06,0.7,1.34,h]){ const p=box(w,0.07,d,wood); p.position.set(0,y,0); g.add(p); }
   const slots = Math.max(items.length*2, 4), sw=(w-0.4)/slots;
   for(const [ri,y] of [[0,0.42],[1,1.06]]) for(let i=0;i<slots;i++){
-    const id2=items[Math.floor(i/slots*items.length)]; const s=itemSprite(id2,0.62); s.position.set(-w/2+0.2+sw*(i+0.5), y, 0.1); g.add(s); }
+    const id2=items[Math.floor(i/slots*items.length)]; const s=itemSprite(id2,0.62); s.position.set(-w/2+0.2+sw*(i+0.5), y, 0.1); s.userData.takeItem=id2; g.add(s); }
+  items.forEach((id2,k)=>{ const nm=ITEMS[id2].name; const t=sign(nm,{w:Math.max(256,nm.length*58+50),h:96,size:54,scale:0.36});
+    t.position.set(-w/2+0.2+(w-0.4)*(k+0.5)/items.length, 1.62, 0.1); g.add(t); });
   if(label){ const sg=sign(label,labelOpt); sg.position.set(0,h+0.75,0); g.add(sg); }
   const st={ id, type:'shelf', label:label||'', items, x, z, aabb:aabb(x,z,w,d), stand:{x, z:z+d/2+0.9} };
   addStation(st,g); return st;
 }
-function makeStart(x,z,name,w=3.4){
+function makeStart(x,z,name,look,w=2.8){
   const g=new THREE.Group(); g.position.set(x,0,z);
-  const c=box(w,1.0,1.2,'#7fb6a6'); c.position.y=0.5; g.add(c);
-  const top=box(w+0.1,0.08,1.3,'#5c8f80'); top.position.y=1.02; g.add(top);
-  const sg=sign(name,{bg:'#12866b',fg:'#fff',w:Math.max(256,name.length*70+60),size:64,scale:0.55}); sg.position.set(0,1.55,0.2); g.add(sg);
-  const st={ id:'start', type:'start', label:name, x, z, aabb:aabb(x,z,w,1.2), stand:{x, z:z-0.6-0.9} };
-  addStation(st,g); return st;
+  const c=box(w,1.0,1.0,'#7fb6a6'); c.position.y=0.5; g.add(c);
+  const top=box(w+0.1,0.08,1.1,'#5c8f80'); top.position.y=1.02; g.add(top);
+  if(S.scene==='otsukai'){ const reg=box(0.5,0.32,0.42,'#4a5562'); reg.position.set(0.7,1.22,-0.15); g.add(reg);
+    const scr=box(0.4,0.22,0.04,'#9fd3ff'); scr.position.set(0.7,1.5,-0.3); scr.rotation.x=-0.3; g.add(scr); }
+  const st={ id:'start', type:'start', label:name, x, z, aabb:aabb(x,z,w,1.0), stand:{x, z:z+0.5+0.9} };
+  const per=makePerson(look); per.position.set(0,0,-0.95); g.add(per); npcs.push({g:per, st, home:0});
+  const sg=sign(name,{bg:'#12866b',fg:'#fff',w:Math.max(256,name.length*70+60),size:64,scale:0.5}); sg.position.set(0,2.45,-0.95); g.add(sg);
+  addStation(st,g); obstacles.push(aabb(x,z-0.95,0.8,0.8)); return st;
 }
 function makeUnit(id,x,z,mode,idx){
   const w=3,d=0.9,h=2.5,g=new THREE.Group(); g.position.set(x,0,z);
@@ -371,8 +409,11 @@ function makeUnit(id,x,z,mode,idx){
   else { label='ABCDE'[idx]; rows=[1,2,3];
     const sg=sign(label,{w:128,size:84,bg:'#1d2b3a',fg:'#fff'}); sg.position.set(0,h+0.75,0); g.add(sg);
     for(const r of rows){ const rs=sign(String(r),{w:96,h:96,size:62,scale:0.5}); rs.position.set(-w/2-0.1,0.06+(r-1)*0.8+0.42,d/2); g.add(rs); } }
-  const cellG={}; for(const r of rows){ cellG[r]=new THREE.Group(); g.add(cellG[r]); }
-  const st={ id, type:'unit', label, idx, mode, rows, cellG, x, z, aabb:aabb(x,z,w,d), stand:{x, z:z+d/2+0.9} };
+  const cellG={}, cellHit={}; for(const r of rows){ cellG[r]=new THREE.Group(); g.add(cellG[r]);
+    const y0 = r===0 ? 0.06 : 0.06+(r-1)*0.8, hh = r===0 ? h-0.06 : 0.8;
+    const m=new THREE.Mesh(new THREE.BoxGeometry(w-0.26, hh-0.1, 0.3), new THREE.MeshBasicMaterial({color:0x12866b, transparent:true, opacity:0, depthWrite:false}));
+    m.position.set(0, y0+hh/2, -0.2); m.userData.cellRow=r; g.add(m); cellHit[r]=m; }
+  const st={ id, type:'unit', label, idx, mode, rows, cellG, cellHit, x, z, aabb:aabb(x,z,w,d,2.6), stand:{x, z:z+d/2+0.9} };
   addStation(st,g); return st;
 }
 function makeHouse(id,hi,x,z,face){
@@ -383,31 +424,34 @@ function makeHouse(id,hi,x,z,face){
   door.position.set(fx*(s/2+0.04),0.85,fz*(s/2+0.04)); door.rotation.y=Math.atan2(fx,fz); g.add(door);
   const sg=sign(H.name,{w:220,size:70,scale:0.9}); sg.position.set(fx*(s/2+0.5),2.75,fz*(s/2+0.5)); g.add(sg);
   const gift=new THREE.Group(); gift.position.set(fx*(s/2+0.45)+fz*1.1,0.35,fz*(s/2+0.45)-fx*1.1); g.add(gift);
-  const st={ id, type:'house', hi, label:H.name+'さん', x, z, gift, aabb:aabb(x,z,s,s), stand:{x:x+fx*(s/2+0.95), z:z+fz*(s/2+0.95)} };
-  addStation(st,g); return st;
+  const st={ id, type:'house', hi, label:H.name+'さん', x, z, gift, aabb:aabb(x,z,s,s,4.2), stand:{x:x+fx*(s/2+0.95), z:z+fz*(s/2+0.95)} };
+  const per=makePerson({shirt:H.door, hair:['#3a2a1e','#6b4a2a','#222','#9a9a9a'][hi%4], pants:['#3b4a5c','#6b5a44','#2b2b33'][hi%3]});
+  const px=fx*(s/2+0.6)-fz*1.15, pz=fz*(s/2+0.6)+fx*1.15, home=Math.atan2(fx,fz);
+  per.position.set(px,0,pz); per.rotation.y=home; g.add(per); npcs.push({g:per, st, home});
+  addStation(st,g); obstacles.push(aabb(x+px,z+pz,0.7,0.7)); return st;
 }
 function tree(x,z){ const t=box(0.3,1.2,0.3,'#7a5226'); t.position.set(x,0.6,z); world.add(t);
-  const l=new THREE.Mesh(new THREE.SphereGeometry(0.9,12,10), lam('#4e9a48')); l.position.set(x,1.8,z); world.add(l); obstacles.push(aabb(x,z,0.6,0.6)); }
+  const l=new THREE.Mesh(new THREE.SphereGeometry(0.9,12,10), lam('#4e9a48')); l.position.set(x,1.8,z); world.add(l); obstacles.push(aabb(x,z,0.6,0.6,2.8)); }
 
 function buildWorld(sc){
-  world.clear(); stations=[]; obstacles=[]; pickables=[];
+  world.clear(); stations=[]; obstacles=[]; pickables=[]; npcs.length=0;
   if(sc==='otsukai'){
-    room(22,18,'#f3eee4','#e8e1d3','#bcd3e3');
+    room(22,20,'#f3eee4','#e8e1d3','#bcd3e3');
     const items=shuffle(POOL.food); let k=0, n=1;
-    for(const z of [-5.5,-0.5]) for(const x of [-5,5]){ makeShelf('s'+n,x,z,4.2,[items[k++],items[k++]],'たな '+n,{w:220,size:60,scale:0.7}); n++; }
-    makeStart(0,6,SCENES.otsukai.startName); startPos={x:0,z:3.6};
+    for(const z of [-6,0]) for(const x of [-5,5]){ makeShelf('s'+n,x,z,4.2,[items[k++],items[k++]],'たな '+n,{w:220,size:60,scale:0.7}); n++; }
+    makeStart(0,4,SCENES.otsukai.startName,STAFF.otsukai); startPos={x:0,z:5.4};
   } else if(sc==='picking'){
-    room(26,22,'#d9dde1','#cdd2d7','#a9b4bf');
+    room(26,24,'#d9dde1','#cdd2d7','#a9b4bf');
     const items=shuffle(POOL.ware); const counts=shuffle([2,2,1,1,1,1]); let k=0, n=0;
     for(const z of [-7,-1]) for(const x of [-8,0,8]){ const c=counts[n]; const L='ABCDEF'[n];
       makeShelf('s'+L,x,z,4.2,items.slice(k,k+c),L,{w:128,size:84,bg:'#1d2b3a',fg:'#fff',scale:0.95}); k+=c; n++; }
-    makeStart(0,8,SCENES.picking.startName); startPos={x:0,z:5.6};
+    makeStart(0,5.5,SCENES.picking.startName,STAFF.picking); startPos={x:0,z:6.9};
   } else if(sc==='shelve'){
-    room(24,18,'#d9dde1','#cdd2d7','#a9b4bf');
+    room(24,20,'#d9dde1','#cdd2d7','#a9b4bf');
     const mode=CFG.shelveDest[S.level];
     [-8,-4,0,4,8].forEach((x,i)=>makeUnit('u'+i,x,-5.5,mode,i));
-    makeStart(0,5.5,SCENES.shelve.startName); startPos={x:0,z:3.2};
-    const cart=box(1.4,0.6,0.9,'#c98a4b'); cart.position.set(2.6,0.3,5.5); world.add(cart);
+    makeStart(0,4,SCENES.shelve.startName,STAFF.shelve); startPos={x:0,z:5.4};
+    const cart=box(1.4,0.6,0.9,'#c98a4b'); cart.position.set(2.7,0.3,4); world.add(cart); obstacles.push(aabb(2.7,4,1.4,0.9,0.8));
   } else {
     room(32,30,'#9ccc7c','#92c272','#d7c9a8',true);
     const road=new THREE.Mesh(new THREE.PlaneGeometry(4,30),lam('#e2d6b8')); road.rotation.x=-Math.PI/2; road.position.set(0,0.01,0); world.add(road);
@@ -416,7 +460,7 @@ function buildWorld(sc){
     const spots=[[-9,-10.5,{x:0,z:1}],[0,-10.5,{x:0,z:1}],[9,-10.5,{x:0,z:1}],[-11.5,1,{x:1,z:0}],[11.5,1,{x:-1,z:0}],[-5,6,{x:1,z:0}]];
     spots.forEach(([x,z,f],i)=>makeHouse('h'+hs[i],hs[i],x,z,f));
     for(const [x,z] of [[-14,-13],[14,-13],[-5,-13],[5,-13],[14,8],[-14,9],[11,12],[13,-6],[-13,-6]]) tree(x,z);
-    makeStart(5,10,SCENES.delivery.startName,4); startPos={x:5,z:7.6};
+    makeStart(5,10,SCENES.delivery.startName,STAFF.delivery); startPos={x:5,z:11.4};
   }
   buildGrid();
 }
@@ -510,7 +554,8 @@ cv.addEventListener('pointerdown',e=>{
   if(S.mode!=='play'||S.paused) return;
   cv.setPointerCapture(e.pointerId);
   const p={x0:e.clientX,y0:e.clientY,x:e.clientX,t0:performance.now(),kind:'cam',moved:0};
-  if(S.control==='walk' && !joy.active && e.clientX<innerWidth*0.45 && e.clientY>innerHeight*0.38){
+  const nearPad = Math.hypot(e.clientX-99, e.clientY-(innerHeight-99))<115;
+  if(S.control==='walk' && !joy.active && e.clientX<innerWidth*0.45 && e.clientY>innerHeight*0.38 && (nearPad || !interactiveAt(e.clientX,e.clientY))){
     p.kind='joy'; joy.active=true; joy.id=e.pointerId; joy.cx=e.clientX; joy.cy=e.clientY; joy.x=joy.y=0;
     const J=$('joy'); J.style.left=(e.clientX-75)+'px'; J.style.bottom=(innerHeight-e.clientY-75)+'px'; S.path=null; }
   ptrs.set(e.pointerId,p);
@@ -524,14 +569,39 @@ cv.addEventListener('pointermove',e=>{
 });
 function endPtr(e){ const p=ptrs.get(e.pointerId); if(!p) return; ptrs.delete(e.pointerId);
   if(p.kind==='joy'){ joy.active=false; joy.x=joy.y=0; const J=$('joy'); J.style.left=''; J.style.bottom=''; J.firstElementChild.style.transform=''; }
-  else if(e.type==='pointerup' && p.moved<CFG.tap.movePx && performance.now()-p.t0<CFG.tap.ms && S.control==='tap') tapWorld(e.clientX,e.clientY); }
+  else if(e.type==='pointerup' && p.moved<CFG.tap.movePx && performance.now()-p.t0<CFG.tap.ms) handleTap(e.clientX,e.clientY); }
 cv.addEventListener('pointerup',endPtr); cv.addEventListener('pointercancel',endPtr);
 const ray=new THREE.Raycaster(), ndc=new THREE.Vector2();
-function tapWorld(x,y){
-  ndc.set(x/innerWidth*2-1, -(y/innerHeight)*2+1); ray.setFromCamera(ndc,camera);
-  const hit=ray.intersectObjects(pickables,true)[0];
-  if(hit){ const st=stations.find(s=>s.id===hit.object.userData.stationId); if(st){ goTo(st); return; } }
-  const f=ray.intersectObject(floorMesh)[0]; if(f) goPoint(f.point.x,f.point.z);
+function rayHits(x,y){ ndc.set(x/innerWidth*2-1, -(y/innerHeight)*2+1); ray.setFromCamera(ndc,camera); return ray.intersectObjects(pickables,true); }
+// たなの まえで さわれる もの（しなもの・おく ばしょ）が あるか
+function interactiveAt(x,y){
+  const v=S.view; if(!v||S.mode!=='play') return false;
+  return rayHits(x,y).some(h=>{ const u=h.object.userData; if(u.stationId!==v.id) return false;
+    return u.takeItem || u.placedItem || (u.cellRow!==undefined && S.sel); });
+}
+function handleTap(x,y){
+  if(S.mode!=='play'||S.paused) return;
+  const hits=rayHits(x,y);
+  const h0=hits.find(h=>h.object.userData.stationId);
+  const st=h0 && stations.find(s=>s.id===h0.object.userData.stationId);
+  if(st && S.view===st){
+    if(st.type==='shelf'){ const it=hits.find(h=>h.object.userData.takeItem && h.object.userData.stationId===st.id);
+      if(it) takeItem(it.object.userData.takeItem); return; }
+    if(st.type==='unit'){ unitTap(st,hits); return; }
+    if(st.type==='start'){ openPanel(st); return; }
+  }
+  if(S.control==='tap'){ if(st){ goTo(st); return; } const f=ray.intersectObject(floorMesh)[0]; if(f) goPoint(f.point.x,f.point.z); }
+  else if(st && st.type==='unit' && S.sel) toast('たなの まえまで いこう',true);
+}
+function unitTap(u,hits){
+  const sp=hits.find(h=>h.object.userData.placedItem && h.object.userData.stationId===u.id);
+  const cell=hits.find(h=>h.object.userData.cellRow!==undefined && h.object.userData.stationId===u.id);
+  if(S.sel && bk(S.sel)>0){
+    const row = sp ? sp.object.userData.placedRow : cell ? cell.object.userData.cellRow : null;
+    if(row===null){ toast('おく だんを タップしてね',true); return; }
+    place(u,row); return; }
+  if(sp){ unplace(u, sp.object.userData.placedRow, sp.object.userData.placedItem); return; }
+  toast('したの もっている ものを タップして えらんでね',true);
 }
 addEventListener('keydown',e=>{keys[e.key]=true;}); addEventListener('keyup',e=>{keys[e.key]=false;});
 
@@ -575,7 +645,7 @@ function renderMenu(){
 }
 function levelDesc(sc,n){
   const L=CFG.levels[n];
-  if(n===1) return 'ものすごく かんたん';
+  if(n===1) return 'まずは ここから<br>やって みよう';
   let a;
   if(sc==='delivery') a=`いえ ${CFG.delivery.houses[n]}けん`;
   else if(sc==='shelve') a={color:'いろの たな',number:'ばんごうの たな',grid:'C-3の ような ばしょ'}[CFG.shelveDest[n]]+`・${L.types[0]}しゅるい`;
@@ -602,10 +672,10 @@ function renderHowto(resume){
   const sc=SCENES[S.scene], c=S.control, mm=memoMode();
   const move={walk:'ひだりしたの まるを ゆびで うごかすと あるく',tap:'いきたい ところを タップすると あるいて いく',buttons:'みぎの ボタンを おすと あるいて いく'}[c];
   const steps={
-    otsukai:[['memo','メモを みる','かう ものと かずを たしかめる'],['tap','たなへ いく',move],['take','かごに いれる','たなを ひらいて しなものを タップ'],['back','レジへ もどる',`レジで「${sc.finish}」`]],
-    picking:[['memo','メモを みる','たなの もじ・しなもの・かずを たしかめる'],['tap','たなへ いく',move],['take','かごに いれる','たなを ひらいて しなものを タップ'],['back','しゅっかぐちへ',`「${sc.finish}」で しらべる`]],
+    otsukai:[['memo','メモを みる','かう ものと かずを たしかめる'],['tap','たなへ いく',move],['take','かごに いれる','たなの まえで しなものを タップ'],['back','レジへ もどる',`レジで「${sc.finish}」`]],
+    picking:[['memo','メモを みる','たなの もじ・しなもの・かずを たしかめる'],['tap','たなへ いく',move],['take','かごに いれる','たなの まえで しなものを タップ'],['back','しゅっかぐちへ',`「${sc.finish}」で しらべる`]],
     delivery:[['memo','メモを みる','だれに なにを いくつ わたすか'],['tap','いえへ いく',move+'。なまえの ふだを みよう'],['give','わたす','もっている ものを タップして わたす'],['back','センターへ もどる',`「${sc.finish}」で しらべる`]],
-    shelve:[['memo','メモを みる','なにを どこに おくか'],['tap','たなを さがす',move],['put','えらんで おく','しなものを えらんで、おく ばしょを タップ'],['back','おきばへ もどる',`「${sc.finish}」で しらべる`]],
+    shelve:[['memo','メモを みる','なにを どこに おくか'],['tap','たなを さがす',move],['put','えらんで おく','もっている ものを タップして えらび、たなの おく ばしょを タップ'],['back','おきばへ もどる',`「${sc.finish}」で しらべる`]],
   }[S.scene];
   if(S.level===1) steps[3]= S.scene==='otsukai'||S.scene==='picking' ? steps[3] : ['back','ぜんぶ できたら おわり','まちがえると「ちがうよ」と おしえて くれる'];
   const notes=[];
@@ -646,11 +716,11 @@ function destList(){ const a=stations.filter(s=>s.type!=='start'); a.sort((p,q)=
 function renderBasket(){
   const ids=Object.keys(S.basket).filter(k=>S.basket[k]>0);
   const lbl=(S.scene==='delivery'||S.scene==='shelve')?'もっている もの':'かご';
-  $('basket').innerHTML=`<span class="lbl">${lbl}</span>`+(ids.length?ids.map(id=>`<button class="bk" data-act="bk" data-item="${id}">${img(id)}<b>${S.basket[id]}</b></button>`).join(''):'<span class="empty">まだ ないよ</span>');
+  $('basket').innerHTML=`<span class="lbl">${lbl}</span>`+(ids.length?ids.map(id=>`<button class="bk ${S.scene==='shelve'&&S.sel===id?'sel':''}" data-act="bk" data-item="${id}">${img(id)}<b>${S.basket[id]}</b></button>`).join(''):'<span class="empty">まだ ないよ</span>');
 }
 
 /* ================= パネル（たな・いえ・スタート） ================= */
-function openPanel(st){ S.panel=st; S.path=null; S.lastMsg=null; if(st.type==='unit'&&!S.sel){ S.sel=Object.keys(S.basket).find(k=>S.basket[k]>0)||null; } renderPanel(); show('panel',true); show('action',false); sfx.open(); updatePause(); }
+function openPanel(st){ S.panel=st; S.path=null; S.lastMsg=null; $('panel').classList.toggle('sheet', st.type==='shelf'); renderPanel(); show('panel',true); show('action',false); sfx.open(); updatePause(); }
 function closePanel(){ S.panel=null; show('panel',false); updatePause(); renderHUD(); }
 function renderPanel(){
   const st=S.panel; if(!st) return; let h='';
@@ -692,11 +762,11 @@ function msgHTML(){ const m=S.lastMsg; if(!m) return ''; return `<div class="msg
 function needFor(id){ return S.order.find(e=>e.item===id); }
 function takeItem(id){
   if(S.level===1){ const o=needFor(id); if(!o){ sfx.ng(); toast('それは メモに ないよ',true); return; } if(bk(id)>=o.qty){ sfx.ng(); toast('もう じゅうぶん あるよ',true); return; } }
-  S.basket[id]=bk(id)+1; sfx.pick(); S.lastMsg=null; renderPanel(); renderHUD();
+  S.basket[id]=bk(id)+1; sfx.pick(); toast(`${ITEMS[id].name}を かごに いれたよ`); S.lastMsg=null; renderPanel(); renderHUD();
 }
 function basketTap(id){
   if(S.scene==='otsukai'||S.scene==='picking'){ if(bk(id)>0){ S.basket[id]--; sfx.put(); toast(`${ITEMS[id].name}を ひとつ もどしたよ`); renderHUD(); if(S.panel) renderPanel(); } }
-  else if(S.panel?.type==='unit'){ S.sel=id; renderPanel(); }
+  else if(S.scene==='shelve'){ S.sel = S.sel===id ? null : id; if(S.sel) sfx.open(); renderHUD(); if(S.panel) renderPanel(); }
 }
 function give(id){
   const h=S.panel; if(bk(id)<=0) return;
@@ -705,20 +775,20 @@ function give(id){
   g[id]=(g[id]||0)+1; S.basket[id]--; sfx.pick(); S.lastMsg=null; giftVisual(h); renderPanel(); renderHUD(); maybeAutoClear();
 }
 function takeback(id){ const h=S.panel, g=S.given[h.id]; if(!g||!g[id]) return; g[id]--; S.basket[id]=bk(id)+1; sfx.put(); giftVisual(h); renderPanel(); renderHUD(); }
-function place(row){
-  const u=S.panel, id=S.sel; if(!id||bk(id)<=0){ toast('さきに おく ものを えらんでね',true); return; }
+function place(u,row){
+  const id=S.sel; if(!id||bk(id)<=0){ toast('さきに おく ものを えらんでね',true); return; }
   const k=cellKey(u,row), p=(S.placed[k] ||= {});
   if(S.level===1){ const o=S.order.find(e=>e.item===id); if(!o||o.unit!==u||(p[id]||0)>=o.qty){ sfx.ng(); toast(o&&o.unit===u?'もう じゅうぶん だよ':'ここじゃ ないよ。メモを みてね',true); return; } }
-  p[id]=(p[id]||0)+1; S.basket[id]--; if(S.basket[id]<=0) S.sel=Object.keys(S.basket).find(x=>S.basket[x]>0)||null;
+  p[id]=(p[id]||0)+1; S.basket[id]--; if(S.basket[id]<=0) S.sel=null;
   sfx.pick(); S.lastMsg=null; unitVisual(u); renderPanel(); renderHUD(); maybeAutoClear();
 }
-function unplace(row,id){ const u=S.panel, p=S.placed[cellKey(u,row)]; if(!p||!p[id]) return; p[id]--; S.basket[id]=bk(id)+1; S.sel=id; sfx.put(); unitVisual(u); renderPanel(); renderHUD(); }
+function unplace(u,row,id){ const p=S.placed[cellKey(u,row)]; if(!p||!p[id]) return; p[id]--; S.basket[id]=bk(id)+1; sfx.put(); toast(`${ITEMS[id].name}を もどしたよ`); unitVisual(u); renderPanel(); renderHUD(); }
 function giftVisual(h){ h.gift.clear(); const g=S.given[h.id]||{}; let n=0;
   for(const id in g) for(let i=0;i<g[id]&&n<8;i++,n++){ const s=itemSprite(id,0.55); s.position.set((n%4)*0.0,0.05+n*0.0,0); s.position.x=((n%4)-1.5)*0.5; s.position.y=Math.floor(n/4)*0.55; h.gift.add(s); } }
 function unitVisual(u){ for(const r of u.rows){ const G2=u.cellG[r]; G2.clear(); const p=S.placed[cellKey(u,r)]||{}; let n=0;
   const baseY = r===0 ? 0.48 : 0.06+(r-1)*0.8+0.42;
   for(const id in p) for(let i=0;i<p[id]&&n<12;i++,n++){ const s=itemSprite(id,0.55); const row0 = r===0 ? Math.floor(n/5) : 0;
-    s.position.set(-1.1+(n%5)*0.55, baseY+row0*0.8, 0.15); G2.add(s); } } }
+    s.position.set(-1.1+(n%5)*0.55, baseY+row0*0.8, 0.15); s.userData={stationId:u.id, placedRow:r, placedItem:id}; G2.add(s); } } }
 
 function problems(){
   const out=[], nm=id=>ITEMS[id].name;
@@ -761,7 +831,7 @@ function setupGame(){
   S.order=genOrder(); S.basket={}; S.given={}; S.placed={}; S.sel=null; S.checks=0; S.memoViews=0; S.elapsed=0; S.path=null; S.panel=null; S.lastMsg=null;
   if(S.scene==='delivery'||S.scene==='shelve') for(const e of S.order) S.basket[e.item]=bk(e.item)+e.qty;
   player.position.set(startPos.x,0,startPos.z); player.rotation.y=Math.PI; S.yaw=0;
-  camPos.set(startPos.x+Math.sin(S.yaw)*CFG.camera.dist, CFG.camera.height, startPos.z+Math.cos(S.yaw)*CFG.camera.dist);
+  computeNear(); updateCamera(0,true);
 }
 function startScene(sc,lvN){ for(const id of ['panel','memoOv','confirmOv','settingsOv','clearOv']) show(id,false); S.scene=sc; S.level=lvN; setupGame(); show('menu',false); show('clearOv',false); renderHowto(false); show('howto',true); S.mode='howto'; renderHUD(); updatePause(); }
 function begin(){
@@ -798,8 +868,8 @@ function act(a,d){
     case 'give': give(d.item); break;
     case 'takeback': takeback(d.item); break;
     case 'select': S.sel=d.item; renderPanel(); break;
-    case 'place': place(+d.cell); break;
-    case 'unplace': unplace(+d.cell,d.item); break;
+    case 'place': place(S.panel,+d.cell); break;
+    case 'unplace': unplace(S.panel,+d.cell,d.item); break;
     case 'finish': finish(); break;
   }
 }
@@ -819,7 +889,7 @@ function collide(p){
 }
 function update(dt){
   const ds=dt*60; // dtScale
-  if(S.mode!=='play'||S.paused){ $('action').hidden=true; return; }
+  if(S.mode!=='play'||S.paused){ $('action').hidden=true; $('hint').hidden=true; return; }
   S.elapsed+=dt;
   let mx=0, mz=0;
   const fx=-Math.sin(S.yaw), fz=-Math.cos(S.yaw), rx=Math.cos(S.yaw), rz=-Math.sin(S.yaw);
@@ -829,7 +899,7 @@ function update(dt){
   else if(S.path){
     const t=S.path[0], dx=t.x-player.position.x, dz=t.z-player.position.z, d=Math.hypot(dx,dz), step=CFG.player.speed*dt;
     if(d<=step){ player.position.x=t.x; player.position.z=t.z; S.path.shift();
-      if(!S.path.length){ S.path=null; if(S.pathStation){ const st=S.pathStation; S.pathStation=null; player.rotation.y=Math.atan2(st.x-player.position.x, st.z-player.position.z); openPanel(st); } } }
+      if(!S.path.length){ S.path=null; if(S.pathStation){ const st=S.pathStation; S.pathStation=null; player.rotation.y=Math.atan2(st.x-player.position.x, st.z-player.position.z); if(st.type==='house'||st.type==='start') openPanel(st); } } }
     else { mx=dx/d; mz=dz/d; }
   }
   if(mx||mz){
@@ -838,23 +908,71 @@ function update(dt){
     const target=Math.atan2(mx,mz); let da=target-player.rotation.y; da=Math.atan2(Math.sin(da),Math.cos(da)); player.rotation.y+=da*Math.min(1,0.25*ds);
     player.position.y=Math.abs(Math.sin(S.elapsed*12))*0.08;
   } else player.position.y=0;
-  // 近くの たな・いえ
+  computeNear();
+  if(S.view){ let dy=-S.yaw; dy=Math.atan2(Math.sin(dy),Math.cos(dy)); S.yaw+=dy*Math.min(1,4*dt); }
+  const near=S.near, A=$('action');
+  if(near&&!S.path&&near.type!=='unit'){ A.hidden=false; const t= near.type==='shelf'?`${near.label}を ひらく`: near.type==='house'?`${near.label}に わたす`:`${near.label}`;
+    if(A.textContent!==t) A.textContent=t; } else A.hidden=true;
+  let hint='';
+  if(S.view?.type==='shelf') hint='しなものを タップすると かごに はいるよ';
+  else if(S.view?.type==='unit') hint = S.sel ? `${ITEMS[S.sel].name}を おく ばしょを タップ` : 'したの もっている ものを タップして えらぼう';
+  const Hn=$('hint'); Hn.hidden=!hint; if(Hn.textContent!==hint) Hn.textContent=hint;
+}
+// 近くの たな・いえ と、正面に 立っているか（たなを 正面から 見る カメラ）
+function computeNear(){
   let near=null, best=CFG.nearDist;
   for(const st of stations){ const d=distToBox(player.position.x,player.position.z,st.aabb); if(d<best){best=d;near=st;} }
   S.near=near;
-  const A=$('action');
-  if(near&&!S.path){ A.hidden=false; const t= near.type==='shelf'?`${near.label}を みる`: near.type==='house'?`${near.label}に わたす`: near.type==='unit'?'たなに おく':`${near.label}`;
-    if(A.textContent!==t) A.textContent=t; } else A.hidden=true;
+  let view=null;
+  if(near && (near.type==='shelf'||near.type==='unit'||near.type==='start')){
+    const p=player.position, b=near.aabb; if(p.z>b.maxZ-0.05 && p.x>b.minX-0.6 && p.x<b.maxX+0.6) view=near; }
+  S.view=view;
 }
-function updateCamera(dt){
-  const C=CFG.camera, p=player.position;
-  const tgt=new THREE.Vector3(p.x+Math.sin(S.yaw)*C.dist, C.height, p.z+Math.cos(S.yaw)*C.dist);
-  camPos.lerp(tgt, Math.min(1,C.follow*dt)); camera.position.copy(camPos); camera.lookAt(p.x,1.0,p.z);
+const camLook=new THREE.Vector3(0,1,0), _tg=new THREE.Vector3(), _lk=new THREE.Vector3();
+function updateCamera(dt,snap=false){
+  const C=CFG.camera, p=player.position, v=S.view;
+  if(v){
+    const b=v.aabb, w=b.maxX-b.minX+CFG.view.margin;
+    const top = v.type==='unit'?3.75 : v.type==='shelf'?3.25 : 2.9;
+    const cy=top/2, half=top/2+0.35;
+    const tv=Math.tan(THREE.MathUtils.degToRad(C.fov/2)), th=tv*camera.aspect;
+    const d=Math.max(CFG.view.minDist, (w/2)/th, half/tv);
+    _tg.set(v.x, cy+0.35, b.maxZ+d); _lk.set(v.x, cy-0.25, v.z);
+  } else {
+    const fx=-Math.sin(S.yaw), fz=-Math.cos(S.yaw);
+    _tg.set(p.x-fx*C.dist, C.height, p.z-fz*C.dist);
+    // たてものに かくれないよう、カメラを 近づける
+    let t=1;
+    for(let i=1;i<=24;i++){ const f=i/24, x=p.x+(_tg.x-p.x)*f, z=p.z+(_tg.z-p.z)*f, y=1.5+(_tg.y-1.5)*f;
+      if(obstacles.some(o=>y<o.h && x>o.minX-0.25&&x<o.maxX+0.25&&z>o.minZ-0.25&&z<o.maxZ+0.25)){ t=(i-1)/24; break; } }
+    // かくれる ときは 上から みおろす
+    if(t<1){ const u=1-t; _tg.set(p.x-fx*(C.dist-u*3), C.height+u*3.6, p.z-fz*(C.dist-u*3)); }
+    _lk.set(p.x+fx*C.look, 0.9, p.z+fz*C.look);
+  }
+  _tg.x=Math.max(-S.W/2+0.3,Math.min(S.W/2-0.3,_tg.x)); _tg.z=Math.max(-S.D/2+0.3,Math.min(S.D/2-0.3,_tg.z));
+  const k=snap?1:Math.min(1,C.follow*dt);
+  camPos.lerp(_tg,k); camLook.lerp(_lk,k); camera.position.copy(camPos); camera.lookAt(camLook);
+  // たなの まえでは 自分を うすく する
+  const op=v?0.15:1; for(const m of playerMats) m.opacity+= (op-m.opacity)*Math.min(1,8*dt+(snap?1:0));
+}
+const _wp=new THREE.Vector3();
+function updateNPC(dt){
+  for(const n of npcs){ const g=n.g, arm=g.userData.arm; g.userData.t+=dt;
+    const on = S.mode==='play' && S.near===n.st;
+    const ta = on ? 2.5+0.35*Math.sin(g.userData.t*7) : 0.12;
+    arm.rotation.z += (ta-arm.rotation.z)*Math.min(1,10*dt);
+    g.getWorldPosition(_wp);
+    let ty = on ? Math.atan2(player.position.x-_wp.x, player.position.z-_wp.z) : n.home;
+    let da=ty-g.rotation.y; da=Math.atan2(Math.sin(da),Math.cos(da)); g.rotation.y+=da*Math.min(1,5*dt);
+  }
+  // 棚入れ：えらんで いる ときは おける ばしょを 光らせる
+  for(const st of stations) if(st.type==='unit'){ const on=S.view===st&&S.sel&&!S.paused;
+    for(const r of st.rows) st.cellHit[r].material.opacity = on ? 0.14+0.08*Math.sin(S.elapsed*5) : 0; }
 }
 function resize(){ renderer.setSize(innerWidth,innerHeight,false); camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); }
 addEventListener('resize',resize); resize();
 let last=performance.now();
-function step(dt){ update(dt); updateCamera(dt); S.frames++; }
+function step(dt){ update(dt); updateCamera(dt); updateNPC(dt); S.frames++; }
 function loop(now){ const dt=Math.min(1/30,(now-last)/1000); last=now; step(dt); renderer.render(scene3,camera); requestAnimationFrame(loop); }
 
 /* ================= テスト用フック =================
@@ -871,7 +989,13 @@ window.__game = { S, CFG, camera, player, get stations(){return stations;},
     goTo:id=>goTo(stations.find(s=>s.id===id)),
     open:id=>openPanel(stations.find(s=>s.id===id)),
     close:()=>closePanel(),
-    take:id=>takeItem(id), give:id=>give(id), select:id=>{S.sel=id;}, place:row=>place(row), finish:()=>finish(),
+    take:id=>takeItem(id), give:id=>give(id), select:id=>{S.sel=id;}, place:(uid,row)=>place(stations.find(s=>s.id===uid),row), finish:()=>finish(),
+    tap:(x,y)=>handleTap(x,y), basketTap:id=>basketTap(id),
+    // しなもの・おく ばしょ の がめん上の いち（テスト用）
+    screenOf:(stId,key,val)=>{ const st=stations.find(s=>s.id===stId); let obj=null;
+      st && world.traverse(o=>{ if(!obj && o.userData.stationId===stId && o.userData[key]===val) obj=o; });
+      if(!obj) return null; obj.updateWorldMatrix(true,false); const v=new THREE.Vector3(); obj.getWorldPosition(v); v.project(camera);
+      return { x:(v.x+1)/2*innerWidth, y:(1-v.y)/2*innerHeight }; },
     setControl:c=>{ S.control=c; renderHUD(); },
     joystick:(x,y)=>{ joy.x=x; joy.y=y; },
   } };
